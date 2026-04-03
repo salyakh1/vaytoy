@@ -1,25 +1,10 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { getSessionTokenFromCookies, verifyAdminSession } from "@/lib/session";
 import { uploadPublicObject, isS3Configured } from "@/lib/s3Upload";
-import { randomBytes } from "node:crypto";
+import { safeUploadFileName, validateUploadFile } from "@/lib/uploadRules";
 
-const MAX_SIZE = 80 * 1024 * 1024; // 80 MB
-
-const ALLOWED: Record<string, string[]> = {
-  "image/jpeg": [".jpg", ".jpeg"],
-  "image/png": [".png"],
-  "image/webp": [".webp"],
-  "image/gif": [".gif"],
-  "audio/mpeg": [".mp3"],
-  "audio/mp4": [".m4a"],
-  "video/mp4": [".mp4"],
-  "video/webm": [".webm"],
-};
-
-function safeName(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 120) || "file";
-}
-
+/** Прокси-загрузка через Vercel (лимит тела ~4.5 MB). Для больших файлов используйте POST /api/upload/presign. */
 export async function POST(req: Request) {
   const secret = process.env.AUTH_SECRET;
   const token = await getSessionTokenFromCookies();
@@ -39,24 +24,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Нет файла" }, { status: 400 });
   }
 
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: "Файл слишком большой" }, { status: 400 });
-  }
-
-  const type = file.type || "application/octet-stream";
-  const allowedExts = ALLOWED[type];
-  if (!allowedExts) {
-    return NextResponse.json({ error: "Тип файла не разрешён" }, { status: 400 });
+  const v = validateUploadFile({ name: file.name, type: file.type || "application/octet-stream", size: file.size });
+  if (!v.ok) {
+    return NextResponse.json({ error: v.error }, { status: 400 });
   }
 
   const buf = Buffer.from(await file.arrayBuffer());
-  const ext = safeName(file.name).match(/\.[^.]+$/)?.[0]?.toLowerCase() || "";
-  if (ext && !allowedExts.includes(ext)) {
-    return NextResponse.json({ error: "Расширение не совпадает с типом" }, { status: 400 });
-  }
+  const type = file.type || "application/octet-stream";
 
   const id = randomBytes(8).toString("hex");
-  const key = `vaytoy/${prefix.replace(/[^a-zA-Z0-9/_-]/g, "")}/${id}-${safeName(file.name)}`;
+  const key = `vaytoy/${prefix.replace(/[^a-zA-Z0-9/_-]/g, "")}/${id}-${safeUploadFileName(file.name)}`;
 
   try {
     const url = await uploadPublicObject(key, buf, type);

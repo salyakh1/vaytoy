@@ -263,16 +263,36 @@ export default function EditorClient({
     setUploading(prefix);
     setSaveError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("prefix", `${doc.slug}/${prefix}`);
-      const res = await fetch("/api/upload", { method: "POST", credentials: "include", body: fd });
-      const j = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok) {
-        setSaveError(j.error ?? "Загрузка не удалась");
+      const presignRes = await fetch("/api/upload/presign", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prefix: `${doc.slug}/${prefix}`,
+          filename: file.name,
+          contentType: file.type || "application/octet-stream",
+          size: file.size,
+        }),
+      });
+      const presignJson = (await presignRes.json()) as { putUrl?: string; publicUrl?: string; error?: string };
+      if (!presignRes.ok) {
+        setSaveError(presignJson.error ?? "Загрузка не удалась");
         return;
       }
-      if (j.url) applyUrl(j.url);
+      if (!presignJson.putUrl || !presignJson.publicUrl) {
+        setSaveError("Сервер не вернул ссылку на загрузку");
+        return;
+      }
+      const putRes = await fetch(presignJson.putUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      });
+      if (!putRes.ok) {
+        setSaveError(`Не удалось отправить файл в хранилище (${putRes.status})`);
+        return;
+      }
+      applyUrl(presignJson.publicUrl);
     } catch {
       setSaveError("Сеть");
     } finally {
