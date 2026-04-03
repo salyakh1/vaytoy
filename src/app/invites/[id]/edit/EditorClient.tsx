@@ -21,6 +21,14 @@ function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
 }
 
+/** Часто TypeError / NetworkError при блокировке fetch (CORS к S3, обрыв сети). */
+function isLikelyFetchBlocked(e: unknown): boolean {
+  if (e instanceof TypeError) return true;
+  if (typeof DOMException !== "undefined" && e instanceof DOMException && e.name === "NetworkError") return true;
+  if (e instanceof Error && /failed to fetch|load failed|networkerror/i.test(e.message)) return true;
+  return false;
+}
+
 function Icon({ d }: { d: string }) {
   return (
     <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" aria-hidden="true">
@@ -211,8 +219,14 @@ export default function EditorClient({
         return;
       }
       setPublished(nextPublished);
-    } catch {
-      setSaveError("Сеть");
+    } catch (e) {
+      setSaveError(
+        isLikelyFetchBlocked(e)
+          ? "Не удалось сохранить: нет ответа от сервера приложения. Проверьте интернет, откройте сайт по HTTPS, при необходимости войдите снова; на Vercel — переменные окружения и логи."
+          : e instanceof Error
+            ? e.message
+            : "Ошибка сохранения",
+      );
     } finally {
       setSaving(false);
     }
@@ -274,13 +288,19 @@ export default function EditorClient({
           size: file.size,
         }),
       });
-      const presignJson = (await presignRes.json()) as {
+      let presignJson: {
         putUrl?: string;
         publicUrl?: string;
         error?: string;
         missingEnv?: string[];
         hint?: string;
       };
+      try {
+        presignJson = (await presignRes.json()) as typeof presignJson;
+      } catch {
+        setSaveError("Ответ сервера при запросе загрузки некорректен. Обновите страницу и попробуйте снова.");
+        return;
+      }
       if (!presignRes.ok) {
         const msg = [presignJson.error ?? "Загрузка не удалась"];
         if (presignJson.missingEnv?.length) {
@@ -300,12 +320,19 @@ export default function EditorClient({
         headers: { "Content-Type": file.type || "application/octet-stream" },
       });
       if (!putRes.ok) {
-        setSaveError(`Не удалось отправить файл в хранилище (${putRes.status})`);
+        setSaveError(`Не удалось отправить файл в хранилище (код ${putRes.status}). Проверьте CORS бакета S3 для этого сайта.`);
         return;
       }
       applyUrl(presignJson.publicUrl);
-    } catch {
-      setSaveError("Сеть");
+    } catch (e) {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      if (isLikelyFetchBlocked(e)) {
+        setSaveError(
+          `Файл не дошёл до хранилища S3 (браузер прервал запрос; часто CORS). Timeweb → бакет «vaytoy-media» → CORS: Origin ${origin || "https://vaytoy.vercel.app"}, включите методы PUT, GET, HEAD и разрешённые заголовки (*). Сохраните правила и подождите 1–2 мин.`,
+        );
+      } else {
+        setSaveError(e instanceof Error ? e.message : "Ошибка загрузки файла");
+      }
     } finally {
       setUploading(null);
     }
@@ -1238,8 +1265,8 @@ export default function EditorClient({
                             <input
                               type="color"
                               className="h-10 w-14 shrink-0 cursor-pointer rounded-xl border border-white/10 bg-transparent p-1"
-                              value={hexOrFallbackForPicker(anim.color, DEFAULT_LETTERS_COLOR)}
-                              onChange={(e) =>
+                            value={hexOrFallbackForPicker(anim.color, "#ffffff")}
+                            onChange={(e) =>
                                 setDoc((p) => ({
                                   ...p,
                                   global: {

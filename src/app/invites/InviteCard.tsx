@@ -59,8 +59,8 @@ export function InviteCard({ inv, editPath, publicPath }: { inv: Inv; editPath: 
       }
       setDeleteOpen(false);
       router.refresh();
-    } catch {
-      setErr("Сеть");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Не удалось связаться с сервером");
     } finally {
       setBusy(false);
     }
