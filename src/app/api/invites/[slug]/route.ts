@@ -82,3 +82,35 @@ export async function PUT(req: Request, ctx: { params: Promise<{ slug: string }>
     return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 }
+
+/** Безвозвратное удаление приглашения и всех ответов гостей по этому slug. */
+export async function DELETE(_req: Request, ctx: { params: Promise<{ slug: string }> }) {
+  if (!(await requireAdmin())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!process.env.DATABASE_URL) {
+    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+  }
+
+  const { slug } = await ctx.params;
+  if (!slug) {
+    return NextResponse.json({ error: "Invalid slug" }, { status: 400 });
+  }
+
+  try {
+    const existing = await prisma.invitation.findUnique({ where: { slug }, select: { id: true } });
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    await prisma.$transaction([
+      prisma.guestResponse.deleteMany({ where: { invitationSlug: slug } }),
+      prisma.invitation.delete({ where: { slug } }),
+    ]);
+
+    return NextResponse.json({ ok: true });
+  } catch {
+    return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+  }
+}

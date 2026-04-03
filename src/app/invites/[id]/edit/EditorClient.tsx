@@ -359,7 +359,7 @@ export default function EditorClient({
               <a
                 className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-white/80 hover:border-white/20"
                 href="/invites"
-                title="vaytoy"
+                title="К списку приглашений"
               >
                 <span className="text-xs font-semibold tracking-wide">vt</span>
               </a>
