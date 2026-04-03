@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { getSessionTokenFromCookies, verifyAdminSession } from "@/lib/session";
-import { getPresignedPutUrl, isS3Configured, publicUrlForS3Key } from "@/lib/s3Upload";
+import { getPresignedPutUrl, getMissingS3EnvKeys, isS3Configured, publicUrlForS3Key, S3_VERCEL_HINT } from "@/lib/s3Upload";
 import { safeUploadFileName, validateUploadFile } from "@/lib/uploadRules";
 
 /**
@@ -16,7 +16,14 @@ export async function POST(req: Request) {
   }
 
   if (!isS3Configured()) {
-    return NextResponse.json({ error: "S3 не настроен" }, { status: 503 });
+    return NextResponse.json(
+      {
+        error: "S3 не настроен на сервере",
+        missingEnv: getMissingS3EnvKeys(),
+        hint: S3_VERCEL_HINT,
+      },
+      { status: 503 },
+    );
   }
 
   let body: unknown;

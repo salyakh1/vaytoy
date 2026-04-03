@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { getSessionTokenFromCookies, verifyAdminSession } from "@/lib/session";
-import { uploadPublicObject, isS3Configured } from "@/lib/s3Upload";
+import { uploadPublicObject, getMissingS3EnvKeys, isS3Configured, S3_VERCEL_HINT } from "@/lib/s3Upload";
 import { safeUploadFileName, validateUploadFile } from "@/lib/uploadRules";
 
 /** Прокси-загрузка через Vercel (лимит тела ~4.5 MB). Для больших файлов используйте POST /api/upload/presign. */
@@ -13,7 +13,14 @@ export async function POST(req: Request) {
   }
 
   if (!isS3Configured()) {
-    return NextResponse.json({ error: "S3 не настроен" }, { status: 503 });
+    return NextResponse.json(
+      {
+        error: "S3 не настроен на сервере",
+        missingEnv: getMissingS3EnvKeys(),
+        hint: S3_VERCEL_HINT,
+      },
+      { status: 503 },
+    );
   }
 
   const form = await req.formData();

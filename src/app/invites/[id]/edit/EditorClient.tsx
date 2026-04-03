@@ -274,9 +274,20 @@ export default function EditorClient({
           size: file.size,
         }),
       });
-      const presignJson = (await presignRes.json()) as { putUrl?: string; publicUrl?: string; error?: string };
+      const presignJson = (await presignRes.json()) as {
+        putUrl?: string;
+        publicUrl?: string;
+        error?: string;
+        missingEnv?: string[];
+        hint?: string;
+      };
       if (!presignRes.ok) {
-        setSaveError(presignJson.error ?? "Загрузка не удалась");
+        const msg = [presignJson.error ?? "Загрузка не удалась"];
+        if (presignJson.missingEnv?.length) {
+          msg.push(`Не заданы в окружении сервера: ${presignJson.missingEnv.join(", ")}`);
+        }
+        if (presignJson.hint) msg.push(presignJson.hint);
+        setSaveError(msg.join(" "));
         return;
       }
       if (!presignJson.putUrl || !presignJson.publicUrl) {
