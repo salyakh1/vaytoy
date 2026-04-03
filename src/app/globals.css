@@ -1,0 +1,121 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --bg0: #0b0d14;
+  --bg1: #0e1020;
+  --card: rgba(255, 255, 255, 0.055);
+  --card2: rgba(255, 255, 255, 0.04);
+  --border: rgba(255, 255, 255, 0.11);
+  --border2: rgba(255, 255, 255, 0.16);
+  --text: rgba(255, 255, 255, 0.92);
+  --muted: rgba(255, 255, 255, 0.62);
+  --muted2: rgba(255, 255, 255, 0.42);
+  --accent: #ff6a3d;
+  --accent2: #a855f7;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(900px 520px at 28% -10%, rgba(168, 85, 247, 0.16), transparent 55%),
+    radial-gradient(900px 520px at 78% -10%, rgba(255, 106, 61, 0.14), transparent 58%),
+    radial-gradient(1200px 900px at 50% 0%, rgba(255, 255, 255, 0.06), transparent 60%),
+    linear-gradient(180deg, var(--bg1), var(--bg0));
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji",
+    "Segoe UI Emoji";
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::selection {
+  background: rgba(168, 85, 247, 0.35);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+}
+
+/* Превью в конструкторе: пропорции как у iPhone 17 Pro Max (логические ~402×876 pt) */
+.iphone17pm-shell {
+  width: min(390px, calc(100vw - 7rem));
+  aspect-ratio: 402 / 876;
+  max-height: min(82svh, 880px);
+  min-height: 0;
+  /* Жёсткая высота от ширины, чтобы контент скроллился внутри, а рамка не росла с историей */
+  height: min(min(82svh, 880px), calc(min(390px, calc(100vw - 7rem)) * 876 / 402));
+  overflow: hidden;
+}
+
+@supports not (aspect-ratio: 402 / 876) {
+  .iphone17pm-shell {
+    width: min(390px, calc(100vw - 7rem));
+    height: min(min(82svh, 880px), calc(min(390px, calc(100vw - 7rem)) * 876 / 402));
+    overflow: hidden;
+  }
+}
+
+/* Падающие частицы (сердечки / буквы) между фоном и контентом */
+@keyframes invite-fall-drift {
+  0% {
+    transform: translate3d(0, -4vh, 0) rotate(var(--heart-rot0, 0deg));
+    opacity: 0;
+  }
+  8% {
+    opacity: var(--heart-opacity, 0.45);
+  }
+  28% {
+    transform: translate3d(calc(var(--heart-drift, 0px) * 0.35), 28vh, 0) rotate(calc(var(--heart-rot0, 0deg) + 18deg));
+  }
+  52% {
+    transform: translate3d(calc(var(--heart-drift, 0px) * -0.28), 52vh, 0) rotate(calc(var(--heart-rot0, 0deg) - 12deg));
+  }
+  76% {
+    transform: translate3d(calc(var(--heart-drift, 0px) * 0.42), 78vh, 0) rotate(calc(var(--heart-rot0, 0deg) + 22deg));
+  }
+  100% {
+    transform: translate3d(var(--heart-drift, 0px), 112vh, 0) rotate(calc(var(--heart-rot0, 0deg) + 8deg));
+    opacity: 0.08;
+  }
+}
+
+.invite-fall-particle {
+  animation-name: invite-fall-drift;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* На публичной странице уважаем prefers-reduced-motion; в конструкторе превью всегда показываем слой,
+   иначе при включённом «уменьшить движение» в ОС эффект полностью пропадает из макета телефона. */
+@media (prefers-reduced-motion: reduce) {
+  .invite-overlay-animations {
+    display: none;
+  }
+
+  .invite-editor-device-preview .invite-overlay-animations {
+    display: block !important;
+  }
+}
+

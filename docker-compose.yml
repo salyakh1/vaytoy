@@ -1,0 +1,18 @@
+# Опционально: локальный Postgres, если Timeweb с ПК недоступен (P1001).
+# npm run db:up → в .env временно DATABASE_URL=postgresql://vaytoy:vaytoy@127.0.0.1:5433/vaytoy
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: vaytoy
+      POSTGRES_PASSWORD: vaytoy
+      POSTGRES_DB: vaytoy
+    volumes:
+      - vaytoy_pgdata:/var/lib/postgresql/data
+
+volumes:
+  vaytoy_pgdata:
