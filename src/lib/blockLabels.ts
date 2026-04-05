@@ -16,6 +16,8 @@ export function publicBlockLabel(kind: BlockKind | string): string {
       return "RSVP";
     case "message":
       return "Сообщение";
+    case "text":
+      return "Текст приглашения";
     case "gifts":
       return "Подарки";
     case "survey":
@@ -26,6 +28,8 @@ export function publicBlockLabel(kind: BlockKind | string): string {
       return "Видео";
     case "story":
       return "История";
+    case "slides":
+      return "Слайдер";
     case "map":
       return "Карта";
     case "wishes":

@@ -5,6 +5,7 @@ import type { BlockKind, InviteDoc } from "@/lib/inviteTypes";
 import { blockCardBorderClass, blockShowsSectionTitle, mergeBlockStyle } from "@/lib/inviteTypes";
 import { buildWeddingIcs, formatCountdown } from "@/lib/inviteUtils";
 import { publicBlockLabel } from "@/lib/blockLabels";
+import { SlidesBlockView } from "@/components/SlidesBlockView";
 import { StoryItemImage } from "@/components/StoryItemImage";
 import { MapVenueBlock } from "@/components/MapVenueBlock";
 import { InviteOverlayLayers } from "@/components/InviteOverlayLayers";
@@ -564,6 +565,26 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                   );
                 }
 
+                if (b.kind === "text") {
+                  return (
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                      {secTitle && b.title ? (
+                        <div className="text-center text-sm font-semibold tracking-wide text-white/90">{b.title}</div>
+                      ) : secTitle ? (
+                        <div className="text-center text-sm font-semibold text-white/85">{publicBlockLabel("text")}</div>
+                      ) : null}
+                      <div
+                        className={[
+                          "whitespace-pre-wrap text-center text-[15px] leading-[1.65] text-white/[0.88]",
+                          secTitle ? "mt-3" : "",
+                        ].join(" ")}
+                      >
+                        {b.body}
+                      </div>
+                    </section>
+                  );
+                }
+
                 if (b.kind === "gifts") {
                   return (
                     <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
@@ -703,6 +724,28 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                             ) : null}
                           </div>
                         ))}
+                      </div>
+                    </section>
+                  );
+                }
+
+                if (b.kind === "slides") {
+                  return (
+                    <section
+                      key={`${b.kind}-${blockIdx}`}
+                      className={sectionClass}
+                      style={cardStyle}
+                      id={sectionId(b.kind)}
+                    >
+                      {secTitle ? (
+                        <div className="text-sm font-semibold text-white/85">{publicBlockLabel("slides")}</div>
+                      ) : null}
+                      <div className={secTitle ? "mt-3 min-w-0" : "min-w-0"}>
+                        <SlidesBlockView
+                          items={b.items}
+                          orientation={b.orientation}
+                          variant="public"
+                        />
                       </div>
                     </section>
                   );

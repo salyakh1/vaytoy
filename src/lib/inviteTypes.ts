@@ -14,11 +14,13 @@ export type BlockKind =
   | "names"
   | "rsvp"
   | "message"
+  | "text"
   | "gifts"
   | "survey"
   | "schedule"
   | "video"
   | "story"
+  | "slides"
   | "map"
   | "wishes"
   | "wishesForm";
@@ -132,6 +134,18 @@ export type MessageBlock = {
   style?: Partial<BlockStyle>;
 };
 
+/** Свободный текст приглашения для гостей (формулировка, тёплые слова). */
+export type TextBlock = {
+  kind: "text";
+  enabled: boolean;
+  /** Подзаголовок блока, напр. «Приглашаем вас» */
+  title?: string;
+  /** Основной текст (несколько абзацев через Enter) */
+  body: string;
+} & BlockChrome & {
+  style?: Partial<BlockStyle>;
+};
+
 export type GiftsBlock = {
   kind: "gifts";
   enabled: boolean;
@@ -190,6 +204,22 @@ export type StoryBlock = {
   style?: Partial<BlockStyle>;
 };
 
+/** Элемент слайдера: картинка и своя форма (как в «Истории»). */
+export type SlideItem = {
+  imageUrl?: string;
+  shape: StoryImageShape;
+};
+
+/** Слайдер фото: горизонтальная или вертикальная прокрутка. */
+export type SlidesBlock = {
+  kind: "slides";
+  enabled: boolean;
+  orientation: "horizontal" | "vertical";
+  items: SlideItem[];
+} & BlockChrome & {
+  style?: Partial<BlockStyle>;
+};
+
 export type MapBlock = {
   kind: "map";
   enabled: boolean;
@@ -239,11 +269,13 @@ export type InviteBlock =
   | NamesBlock
   | RsvpBlock
   | MessageBlock
+  | TextBlock
   | GiftsBlock
   | SurveyBlock
   | ScheduleBlock
   | VideoBlock
   | StoryBlock
+  | SlidesBlock
   | MapBlock
   | WishesBlock
   | WishesFormBlock;

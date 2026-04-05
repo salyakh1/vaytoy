@@ -2,7 +2,15 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import type { BlockKind, InviteBlock, InviteDoc, OverlayAnimation, StoryItem } from "@/lib/inviteTypes";
+import type {
+  BlockKind,
+  InviteBlock,
+  InviteDoc,
+  OverlayAnimation,
+  SlideItem,
+  StoryItem,
+} from "@/lib/inviteTypes";
+import { SlidesBlockView } from "@/components/SlidesBlockView";
 import { StoryItemImage } from "@/components/StoryItemImage";
 import { InviteOverlayLayers } from "@/components/InviteOverlayLayers";
 import { DEFAULT_HEARTS_COLOR } from "@/lib/demoInvite";
@@ -82,6 +90,8 @@ function blockTitle(kind: BlockKind) {
       return "Подтверждение";
     case "message":
       return "Сообщение";
+    case "text":
+      return "Текст приглашения";
     case "gifts":
       return "Деньги в подарок";
     case "survey":
@@ -92,6 +102,8 @@ function blockTitle(kind: BlockKind) {
       return "Видео";
     case "story":
       return "История";
+    case "slides":
+      return "Слайдер";
     case "map":
       return "Карта";
     case "wishes":
@@ -331,6 +343,39 @@ export default function EditorClient({
     const b = doc.blocks.find((x) => x.kind === "story");
     if (!b || b.kind !== "story") return;
     setStoryItems(b.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+
+  function setSlideItems(items: SlideItem[]) {
+    updateBlock("slides", { items } as any);
+  }
+
+  function patchSlideItem(idx: number, patch: Partial<SlideItem>) {
+    const b = doc.blocks.find((x) => x.kind === "slides");
+    if (!b || b.kind !== "slides") return;
+    setSlideItems(b.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+
+  function addSlideItem(seed?: Partial<SlideItem>) {
+    const b = doc.blocks.find((x) => x.kind === "slides");
+    if (!b || b.kind !== "slides") return;
+    const next: SlideItem = { shape: seed?.shape ?? "square", imageUrl: seed?.imageUrl };
+    setSlideItems([...b.items, next]);
+  }
+
+  function removeSlideItem(idx: number) {
+    const b = doc.blocks.find((x) => x.kind === "slides");
+    if (!b || b.kind !== "slides") return;
+    setSlideItems(b.items.filter((_, i) => i !== idx));
+  }
+
+  function moveSlideItem(idx: number, dir: -1 | 1) {
+    const b = doc.blocks.find((x) => x.kind === "slides");
+    if (!b || b.kind !== "slides") return;
+    const j = idx + dir;
+    if (j < 0 || j >= b.items.length) return;
+    const items = [...b.items];
+    [items[idx], items[j]] = [items[j], items[idx]];
+    setSlideItems(items);
   }
 
   async function uploadAsset(prefix: string, file: File, applyUrl: (url: string) => void) {
@@ -906,6 +951,36 @@ export default function EditorClient({
                           );
                         }
 
+                        if (b.kind === "text") {
+                          return (
+                            <section
+                              key={`${b.kind}-${blockIdx}`}
+                              className={[
+                                sectionBase,
+                                selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                              ].join(" ")}
+                              style={cardStyle}
+                              onClick={() => setSelected("text")}
+                              id={sectionId("text")}
+                            >
+                              {secTitle && b.title ? (
+                                <div className="text-xs font-semibold text-white/80">{b.title}</div>
+                              ) : secTitle ? (
+                                <div className="text-xs font-semibold text-white/75">Текст приглашения</div>
+                              ) : null}
+                              <div
+                                className={
+                                  secTitle && (b.title || b.body)
+                                    ? "mt-2 whitespace-pre-wrap text-xs leading-relaxed text-white/65"
+                                    : "whitespace-pre-wrap text-xs leading-relaxed text-white/65"
+                                }
+                              >
+                                {b.body || "Текст для гостей…"}
+                              </div>
+                            </section>
+                          );
+                        }
+
                         if (b.kind === "gifts") {
                           return (
                             <section
@@ -1053,6 +1128,37 @@ export default function EditorClient({
                                     ) : null}
                                   </div>
                                 ))}
+                              </div>
+                            </section>
+                          );
+                        }
+
+                        if (b.kind === "slides") {
+                          return (
+                            <section
+                              key={`${b.kind}-${blockIdx}`}
+                              className={[
+                                sectionBase,
+                                selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                              ].join(" ")}
+                              style={cardStyle}
+                              onClick={() => setSelected("slides")}
+                              id={sectionId("slides")}
+                            >
+                              {secTitle ? (
+                                <div className="text-xs font-semibold text-white/75">Слайдер</div>
+                              ) : null}
+                              {secTitle ? (
+                                <p className="mt-1 text-[10px] text-white/35">
+                                  {b.orientation === "vertical" ? "Вертикально" : "Горизонтально"} · листайте
+                                </p>
+                              ) : null}
+                              <div className={secTitle ? "mt-2 min-w-0" : "min-w-0"}>
+                                <SlidesBlockView
+                                  items={b.items}
+                                  orientation={b.orientation}
+                                  variant="preview"
+                                />
                               </div>
                             </section>
                           );
@@ -1699,6 +1805,29 @@ export default function EditorClient({
                 </label>
               ) : null}
 
+              {selectedBlock.kind === "text" ? (
+                <>
+                  <label className="grid gap-1">
+                    <div className="text-[11px] font-medium text-white/55">Заголовок (необязательно)</div>
+                    <input
+                      className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none focus:border-white/20"
+                      placeholder="Например: Приглашаем вас"
+                      value={(selectedBlock as any).title ?? ""}
+                      onChange={(e) => updateBlock("text", { title: e.target.value } as any)}
+                    />
+                  </label>
+                  <label className="grid gap-1">
+                    <div className="text-[11px] font-medium text-white/55">Текст приглашения для гостей</div>
+                    <textarea
+                      className="min-h-[140px] resize-y rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5 text-[13px] leading-relaxed text-white/85 outline-none placeholder:text-white/30 focus:border-white/20"
+                      placeholder="Напишите тёплые слова: кого приглашаете, дату, дресс-код…"
+                      value={(selectedBlock as any).body ?? ""}
+                      onChange={(e) => updateBlock("text", { body: e.target.value } as any)}
+                    />
+                  </label>
+                </>
+              ) : null}
+
               {selectedBlock.kind === "gifts" ? (
                 <label className="grid gap-1">
                   <div className="text-[11px] font-medium text-white/55">Заголовок</div>
@@ -1969,6 +2098,106 @@ export default function EditorClient({
                       + Фото
                     </button>
                   </div>
+                </>
+              ) : null}
+
+              {selectedBlock.kind === "slides" ? (
+                <>
+                  <p className="text-[10px] leading-snug text-white/40">
+                    Направление прокрутки и форма каждого фото. Горизонтально — свайп влево-вправо, вертикально — вверх-вниз.
+                  </p>
+                  <label className="grid gap-1">
+                    <div className="text-[11px] font-medium text-white/55">Направление слайдера</div>
+                    <select
+                      className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none focus:border-white/20"
+                      value={(selectedBlock as Extract<InviteBlock, { kind: "slides" }>).orientation}
+                      onChange={(e) =>
+                        updateBlock("slides", {
+                          orientation: e.target.value as "horizontal" | "vertical",
+                        } as any)
+                      }
+                    >
+                      <option value="horizontal">Горизонтально</option>
+                      <option value="vertical">Вертикально</option>
+                    </select>
+                  </label>
+                  {(selectedBlock as Extract<InviteBlock, { kind: "slides" }>).items.map((it, idx) => (
+                    <div key={idx} className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                      <div className="mb-2 flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          className="h-8 rounded-xl border border-white/10 bg-white/[0.04] px-2 text-[11px] font-semibold text-white/75 hover:border-white/20 disabled:opacity-30"
+                          disabled={idx === 0}
+                          onClick={() => moveSlideItem(idx, -1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="h-8 rounded-xl border border-white/10 bg-white/[0.04] px-2 text-[11px] font-semibold text-white/75 hover:border-white/20 disabled:opacity-30"
+                          disabled={
+                            idx === (selectedBlock as Extract<InviteBlock, { kind: "slides" }>).items.length - 1
+                          }
+                          onClick={() => moveSlideItem(idx, 1)}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className="h-8 rounded-xl border border-white/10 bg-white/[0.04] px-2 text-[11px] font-semibold text-[rgba(255,106,61,0.95)] hover:border-white/20"
+                          onClick={() => removeSlideItem(idx)}
+                        >
+                          Удалить
+                        </button>
+                      </div>
+                      <div className="text-[11px] font-medium text-white/55">Форма фото</div>
+                      <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+                        {(["square", "circle", "heart"] as const).map((sh) => (
+                          <button
+                            key={sh}
+                            type="button"
+                            className={[
+                              "h-9 rounded-xl border text-[11px] font-semibold",
+                              it.shape === sh
+                                ? "border-[rgba(168,85,247,0.55)] bg-[rgba(168,85,247,0.12)] text-white"
+                                : "border-white/10 bg-white/[0.04] text-white/80 hover:border-white/20",
+                            ].join(" ")}
+                            onClick={() => patchSlideItem(idx, { shape: sh })}
+                          >
+                            {sh === "square" ? "Квадрат" : sh === "circle" ? "Круг" : "Сердце"}
+                          </button>
+                        ))}
+                      </div>
+                      <label className="mt-3 grid gap-1">
+                        <div className="text-[11px] font-medium text-white/55">Картинка (URL или файл)</div>
+                        <input
+                          className="h-9 rounded-xl border border-white/10 bg-black/25 px-2 text-[12px] text-white/85 outline-none focus:border-white/20"
+                          value={it.imageUrl ?? ""}
+                          onChange={(e) => patchSlideItem(idx, { imageUrl: e.target.value })}
+                          placeholder="https://..."
+                        />
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/gif"
+                          className="text-[11px] text-white/60 file:mr-2 file:rounded-xl file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-white/80"
+                          disabled={Boolean(uploading)}
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f)
+                              void uploadAsset(`slides-${idx}`, f, (url) => patchSlideItem(idx, { imageUrl: url }));
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="h-10 w-full rounded-2xl border border-white/10 bg-white/[0.06] text-[11px] font-semibold text-white/85 hover:border-white/20"
+                    onClick={() => addSlideItem({ shape: "square" })}
+                  >
+                    + Слайд
+                  </button>
                 </>
               ) : null}
 

@@ -37,6 +37,13 @@ export function createDemoInvite(slug: string): InviteDoc {
         groom: "ЯКОРЬ",
         date: "18 | 09 | 2026",
       },
+      {
+        kind: "text",
+        enabled: true,
+        title: "Приглашаем вас",
+        body:
+          "Дорогие друзья и близкие! Мы будем рады видеть вас на нашем празднике. Ваше присутствие — лучший подарок для нас.\n\nБудем счастливы разделить этот день вместе с вами.",
+      },
       { kind: "rsvp", enabled: false, question: "Вы сможете прийти?" },
       { kind: "message", enabled: false, prompt: "Оставьте сообщение" },
       { kind: "gifts", enabled: false, title: "Деньги в подарок" },
@@ -72,6 +79,16 @@ export function createDemoInvite(slug: string): InviteDoc {
         items: [
           { title: "Как познакомились", text: "Короткая история в 2–3 предложения." },
           { title: "Предложение", text: "Тут будет текст про предложение." },
+        ],
+      },
+      {
+        kind: "slides",
+        enabled: false,
+        orientation: "horizontal",
+        items: [
+          { shape: "circle" },
+          { shape: "heart" },
+          { shape: "square" },
         ],
       },
       {
