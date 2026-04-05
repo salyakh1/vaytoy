@@ -275,11 +275,6 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
     }
   }
 
-  function mapsLink(address: string) {
-    const q = encodeURIComponent(address);
-    return `https://maps.google.com/?q=${q}`;
-  }
-
   function sectionId(kind: string) {
     return `sec-${kind}`;
   }
@@ -325,7 +320,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
   }
 
   return (
-    <main className="relative min-h-dvh w-full">
+    <main className="invite-public-root relative min-h-dvh w-full">
       {hasCustomBg ? (
         <>
           <div
@@ -402,7 +397,10 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
       <div className="relative z-10 mx-auto w-full max-w-[420px] px-3 py-6">
         <div
-          className={["relative overflow-hidden rounded-[28px] border border-white/15 bg-black/25 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-[2px]", globalFontClass].join(" ")}
+          className={[
+            "relative isolate overflow-hidden rounded-[28px] border border-white/15 bg-black/25 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-[2px]",
+            globalFontClass,
+          ].join(" ")}
           style={inviteFrameStyle}
         >
           <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(520px_420px_at_50%_0%,rgba(255,255,255,0.08),transparent_60%)]" />
@@ -768,7 +766,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                       {secTitle && !hasVenueHeader ? (
                         <div className="mb-3 text-sm font-semibold text-white/85">Карта</div>
                       ) : null}
-                      <MapVenueBlock block={b} mapsLink={mapsLink} variant="public" />
+                      <MapVenueBlock block={b} variant="public" />
                     </section>
                   );
                 }

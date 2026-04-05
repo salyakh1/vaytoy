@@ -1,18 +1,17 @@
 "use client";
 
 import type { MapBlock } from "@/lib/inviteTypes";
-import { googleMapsEmbedUrl } from "@/lib/mapEmbed";
+import { googleMapsEmbedUrl, mapsWebFallbackUrl, openMapsPreferred } from "@/lib/mapEmbed";
 
 type Props = {
   block: MapBlock;
-  mapsLink: (address: string) => string;
   /** Тёмная тема приглашения — светлый текст в шапке блока */
   variant: "public" | "preview";
 };
 
 const DEFAULT_BORDER = "#2ec4b6";
 
-export function MapVenueBlock({ block, mapsLink, variant }: Props) {
+export function MapVenueBlock({ block, variant }: Props) {
   const {
     address,
     eventTime,
@@ -106,13 +105,23 @@ export function MapVenueBlock({ block, mapsLink, variant }: Props) {
             src={googleMapsEmbedUrl(address)}
             className={
               variant === "public"
-                ? "pointer-events-auto block h-[min(52vh,320px)] w-full bg-black/20 sm:h-[280px]"
-                : "pointer-events-auto block h-[200px] w-full bg-black/20 sm:h-[220px]"
+                ? "block h-[min(52vh,320px)] w-full bg-black/20 max-md:pointer-events-none sm:h-[280px] md:pointer-events-auto"
+                : "block h-[200px] w-full bg-black/20 max-md:pointer-events-none sm:h-[220px] md:pointer-events-auto"
             }
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             allowFullScreen
             onClick={(e) => e.stopPropagation()}
+          />
+          {/* На телефоне тап по превью открывает карты по умолчанию (Apple / geo:), без принудительного Google Maps */}
+          <button
+            type="button"
+            className="absolute inset-0 z-10 cursor-pointer border-0 bg-transparent p-0 md:hidden"
+            aria-label="Открыть в картах"
+            onClick={(e) => {
+              e.stopPropagation();
+              openMapsPreferred(address);
+            }}
           />
         </div>
       ) : (
@@ -131,9 +140,17 @@ export function MapVenueBlock({ block, mapsLink, variant }: Props) {
               ? "mt-3 flex h-11 w-full items-center justify-center rounded-2xl bg-white text-center text-sm font-semibold text-black hover:bg-white/90"
               : "mt-2 flex h-9 w-full items-center justify-center rounded-xl bg-white text-[11px] font-semibold text-black"
           }
-          href={mapsLink(address)}
+          href={mapsWebFallbackUrl(address)}
           target="_blank"
           rel="noreferrer"
+          onClick={(e) => {
+            if (typeof navigator === "undefined") return;
+            const ua = navigator.userAgent || "";
+            if (/iPhone|iPad|iPod|Android/i.test(ua)) {
+              e.preventDefault();
+              openMapsPreferred(address);
+            }
+          }}
         >
           Открыть в картах
         </a>

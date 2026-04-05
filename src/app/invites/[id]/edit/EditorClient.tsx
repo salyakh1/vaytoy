@@ -22,7 +22,6 @@ import {
   hexOrFallbackForPicker,
 } from "@/lib/overlayAnimMerge";
 import { MapVenueBlock } from "@/components/MapVenueBlock";
-import { googleMapsExternalUrl } from "@/lib/mapEmbed";
 import { blockCardBorderClass, blockShowsSectionTitle, mergeBlockStyle } from "@/lib/inviteTypes";
 import { buildWeddingIcs, defaultInviteListTitle, formatCountdown } from "@/lib/inviteUtils";
 import { UPLOAD_PROXY_MAX_BYTES } from "@/lib/uploadRules";
@@ -177,8 +176,6 @@ export default function EditorClient({
     () => doc.blocks.find((b) => b.kind === selected) ?? doc.blocks[0],
     [doc.blocks, selected],
   );
-
-  const mapsLinkPreview = (addr: string) => googleMapsExternalUrl(addr);
 
   const titlePlaceholder = useMemo(() => defaultInviteListTitle(doc), [doc]);
 
@@ -1252,7 +1249,7 @@ export default function EditorClient({
                               {secTitle && !hasVenueHeader ? (
                                 <div className="mb-2 text-xs font-semibold text-white/75">Карта</div>
                               ) : null}
-                              <MapVenueBlock block={b} mapsLink={mapsLinkPreview} variant="preview" />
+                              <MapVenueBlock block={b} variant="preview" />
                             </section>
                           );
                         }

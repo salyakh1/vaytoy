@@ -15,11 +15,13 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const { slug } = await props.params;
   const sp = await props.searchParams;
+  const metaBase = { colorScheme: "light" as const };
+
   if (sp?.d) {
-    return { title: "Предпросмотр · vaytoy" };
+    return { ...metaBase, title: "Предпросмотр · vaytoy" };
   }
   if (!process.env.DATABASE_URL) {
-    return { title: "vaytoy" };
+    return { ...metaBase, title: "vaytoy" };
   }
   try {
     const row = await prisma.invitation.findUnique({
@@ -27,12 +29,12 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       select: { title: true, published: true },
     });
     if (!row?.published) {
-      return { title: "vaytoy" };
+      return { ...metaBase, title: "vaytoy" };
     }
     const t = row.title?.trim();
-    return { title: t ? `${t} · vaytoy` : "Приглашение · vaytoy" };
+    return { ...metaBase, title: t ? `${t} · vaytoy` : "Приглашение · vaytoy" };
   } catch {
-    return { title: "vaytoy" };
+    return { ...metaBase, title: "vaytoy" };
   }
 }
 
