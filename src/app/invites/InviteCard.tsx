@@ -71,7 +71,6 @@ export function InviteCard({ inv, editPath, publicPath }: { inv: Inv; editPath: 
       <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-semibold text-white/90">{label}</div>
-          <div className="mt-1 font-mono text-xs text-white/40">{inv.slug}</div>
           <div className="mt-2 flex items-center justify-between gap-2 text-xs">
             <span className={inv.published ? "text-emerald-300/90" : "text-amber-200/80"}>
               {inv.published ? "Опубликовано" : "Черновик"}

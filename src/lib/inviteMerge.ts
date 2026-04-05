@@ -10,6 +10,7 @@ export function mergeInviteWithDefaults(slug: string, doc: InviteDoc): InviteDoc
   const mergedGlobal = {
     ...doc.global,
     showBlockTitles: doc.global.showBlockTitles ?? demo.global.showBlockTitles ?? false,
+    backgroundBrightness: doc.global.backgroundBrightness ?? demo.global.backgroundBrightness ?? 1,
     overlayAnimations: mergeOverlayAnimationsForDoc(doc),
   };
   if (extra.length === 0) return { ...doc, global: mergedGlobal };

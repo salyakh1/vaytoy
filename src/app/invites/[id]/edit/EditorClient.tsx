@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { BlockKind, InviteBlock, InviteDoc, OverlayAnimation, StoryItem } from "@/lib/inviteTypes";
 import { StoryItemImage } from "@/components/StoryItemImage";
@@ -15,7 +16,20 @@ import {
 import { MapVenueBlock } from "@/components/MapVenueBlock";
 import { googleMapsExternalUrl } from "@/lib/mapEmbed";
 import { blockCardBorderClass, blockShowsSectionTitle, mergeBlockStyle } from "@/lib/inviteTypes";
-import { buildWeddingIcs, formatCountdown } from "@/lib/inviteUtils";
+import { buildWeddingIcs, defaultInviteListTitle, formatCountdown } from "@/lib/inviteUtils";
+import { UPLOAD_PROXY_MAX_BYTES } from "@/lib/uploadRules";
+import {
+  inviteBackgroundFallbackStyle,
+  inviteBackgroundImageLayerStyle,
+  inviteBackgroundScrimStyle,
+} from "@/lib/inviteBackgroundStyle";
+import {
+  editPathForInviteSlug,
+  effectiveSlugForStorage,
+  inviteSlugValidationMessage,
+  normalizeInviteSlug,
+  slugHintFromTitle,
+} from "@/lib/inviteSlug";
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n));
@@ -129,11 +143,19 @@ function Slider({
 export default function EditorClient({
   initial,
   initialPublished,
+  initialTitle = "",
 }: {
   initial: InviteDoc;
   initialPublished: boolean;
+  /** Название в списке приглашений (поле в БД), не путать с техническим slug в URL */
+  initialTitle?: string;
 }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [doc, setDoc] = useState<InviteDoc>(initial);
+  /** Slug строки в БД и сегмент API; после смены адреса обновляется с ответа сервера */
+  const [apiSlug, setApiSlug] = useState(initial.slug);
+  const [inviteTitle, setInviteTitle] = useState(initialTitle);
   const [published, setPublished] = useState(initialPublished);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -145,6 +167,25 @@ export default function EditorClient({
   );
 
   const mapsLinkPreview = (addr: string) => googleMapsExternalUrl(addr);
+
+  const titlePlaceholder = useMemo(() => defaultInviteListTitle(doc), [doc]);
+
+  /** Текст ссылки для гостей в интерфейсе — только имя, без /i/... */
+  const guestLinkLabel = useMemo(() => inviteTitle.trim() || titlePlaceholder, [inviteTitle, titlePlaceholder]);
+
+  const [guestUrlCopied, setGuestUrlCopied] = useState(false);
+
+  async function copyGuestUrl() {
+    try {
+      const seg = effectiveSlugForStorage(doc.slug, apiSlug);
+      const u = `${window.location.origin}/i/${encodeURIComponent(seg)}`;
+      await navigator.clipboard.writeText(u);
+      setGuestUrlCopied(true);
+      window.setTimeout(() => setGuestUrlCopied(false), 2000);
+    } catch {
+      setGuestUrlCopied(false);
+    }
+  }
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 1000);
@@ -198,25 +239,44 @@ export default function EditorClient({
   }
 
   const openLink = useMemo(() => {
-    if (published) return `/i/${encodeURIComponent(doc.slug)}`;
+    const seg = effectiveSlugForStorage(doc.slug, apiSlug);
+    if (published) return `/i/${encodeURIComponent(seg)}`;
     const payload = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(doc)))));
-    return `/i/${encodeURIComponent(doc.slug)}?d=${payload}`;
-  }, [doc, published]);
+    return `/i/${encodeURIComponent(seg)}?d=${payload}`;
+  }, [doc, published, apiSlug]);
 
   async function persist(nextPublished: boolean) {
     setSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch(`/api/invites/${encodeURIComponent(doc.slug)}`, {
+      const slugNorm = normalizeInviteSlug(doc.slug);
+      const slugErr = inviteSlugValidationMessage(slugNorm);
+      if (slugErr) {
+        setSaveError(slugErr);
+        return;
+      }
+      const docToSend: InviteDoc = { ...doc, slug: slugNorm };
+
+      const res = await fetch(`/api/invites/${encodeURIComponent(apiSlug)}`, {
         method: "PUT",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ doc, published: nextPublished }),
+        body: JSON.stringify({ doc: docToSend, published: nextPublished, title: inviteTitle }),
       });
+      const j = (await res.json().catch(() => ({}))) as {
+        invitation?: { title?: string; slug?: string };
+        error?: string;
+      };
       if (!res.ok) {
-        const j = (await res.json().catch(() => ({}))) as { error?: string };
         setSaveError(j.error ?? "Ошибка сохранения");
         return;
+      }
+      if (typeof j.invitation?.title === "string") setInviteTitle(j.invitation.title);
+      if (typeof j.invitation?.slug === "string") {
+        setApiSlug(j.invitation.slug);
+        setDoc((p) => ({ ...p, slug: j.invitation!.slug! }));
+        const nextPath = editPathForInviteSlug(j.invitation.slug);
+        if (pathname !== nextPath) router.replace(nextPath);
       }
       setPublished(nextPublished);
     } catch (e) {
@@ -276,13 +336,43 @@ export default function EditorClient({
   async function uploadAsset(prefix: string, file: File, applyUrl: (url: string) => void) {
     setUploading(prefix);
     setSaveError(null);
+    const prefixPath = `${effectiveSlugForStorage(doc.slug, apiSlug)}/${prefix}`;
+
     try {
+      /* Файлы до ~4 MB: прокси на сервер → S3 (обходит CORS браузера к Timeweb). Больше — presign + PUT в S3. */
+      if (file.size <= UPLOAD_PROXY_MAX_BYTES) {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("prefix", prefixPath);
+        const res = await fetch("/api/upload", { method: "POST", credentials: "include", body: fd });
+        let j: { url?: string; error?: string };
+        try {
+          j = (await res.json()) as { url?: string; error?: string };
+        } catch {
+          setSaveError("Сервер вернул некорректный ответ при загрузке.");
+          return;
+        }
+        if (res.ok && j.url) {
+          applyUrl(j.url);
+          return;
+        }
+        if (res.status === 413) {
+          setSaveError(
+            j.error ??
+              "Файл слишком большой для загрузки через сервер. Сожмите файл или настройте CORS на бакете S3 для прямой загрузки.",
+          );
+          return;
+        }
+        setSaveError(j.error ?? `Ошибка загрузки (${res.status})`);
+        return;
+      }
+
       const presignRes = await fetch("/api/upload/presign", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prefix: `${doc.slug}/${prefix}`,
+          prefix: prefixPath,
           filename: file.name,
           contentType: file.type || "application/octet-stream",
           size: file.size,
@@ -327,8 +417,15 @@ export default function EditorClient({
     } catch (e) {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       if (isLikelyFetchBlocked(e)) {
+        const overProxy = file.size > UPLOAD_PROXY_MAX_BYTES;
+        const videoHint =
+          prefix === "video" || (file.type && file.type.startsWith("video/"))
+            ? " Видео обычно больше лимита прокси (~4 MB) и грузится напрямую в S3 — без CORS на бакете не взлетит. Либо сожмите ролик до ~4 MB, либо вставьте прямую ссылку на .mp4 в поле URL выше."
+            : overProxy
+              ? " Файл больше ~4 MB — загрузка только напрямую в S3, нужен CORS на бакете. Либо уменьшите размер файла до ~4 MB."
+              : "";
         setSaveError(
-          `Файл не дошёл до хранилища S3 (браузер прервал запрос; часто CORS). Timeweb → бакет «vaytoy-media» → CORS: Origin ${origin || "https://vaytoy.vercel.app"}, включите методы PUT, GET, HEAD и разрешённые заголовки (*). Сохраните правила и подождите 1–2 мин.`,
+          `Файл не дошёл до хранилища S3 (браузер прервал запрос; часто CORS). Timeweb → бакет → CORS: Origin ${origin || "https://vaytoy.vercel.app"}, методы PUT, GET, HEAD, заголовки *.${videoHint}`,
         );
       } else {
         setSaveError(e instanceof Error ? e.message : "Ошибка загрузки файла");
@@ -345,18 +442,6 @@ export default function EditorClient({
     fontSize: `${doc.global.fontSizePx}px`,
   };
 
-  const inviteBgStyle: React.CSSProperties = doc.global.backgroundImage
-    ? {
-        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,${doc.global.overlayOpacity}), rgba(0,0,0,${
-          doc.global.overlayOpacity + 0.2
-        })), url(${doc.global.backgroundImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }
-    : {
-        background:
-          "radial-gradient(520px 420px at 50% 0%, rgba(168,85,247,0.14), transparent 60%), radial-gradient(520px 420px at 50% 0%, rgba(255,106,61,0.10), transparent 62%), rgba(255,255,255,0.03)",
-      };
 
   const enabledKinds = useMemo(() => doc.blocks.filter((b) => b.enabled).map((b) => b.kind), [doc.blocks]);
 
@@ -370,7 +455,7 @@ export default function EditorClient({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${doc.slug}.ics`;
+    a.download = `${effectiveSlugForStorage(doc.slug, apiSlug)}.ics`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -458,11 +543,79 @@ export default function EditorClient({
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col">
-          <header className="flex items-center justify-between border-b border-white/10 bg-black/10 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <div className="text-xs font-medium text-white/65">vaytoy</div>
-              <div className="h-4 w-px bg-white/10" />
-              <div className="text-xs text-white/55">{doc.slug}</div>
+          <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-black/10 px-4 py-3">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <div className="shrink-0 pt-1.5 text-xs font-medium text-white/65">vaytoy</div>
+              <div className="min-w-0 flex-1 grid gap-1">
+                <label className="grid gap-0.5">
+                  <span className="text-[10px] font-medium text-white/40">Название приглашения</span>
+                  <input
+                    className="h-9 w-full max-w-sm rounded-xl border border-white/10 bg-black/30 px-3 text-xs text-white/90 outline-none placeholder:text-white/30 focus:border-white/25"
+                    value={inviteTitle}
+                    onChange={(e) => setInviteTitle(e.target.value)}
+                    placeholder={titlePlaceholder}
+                    autoComplete="off"
+                    aria-label="Название приглашения"
+                  />
+                </label>
+                <label className="grid gap-0.5">
+                  <span className="text-[10px] font-medium text-white/40">Адрес страницы в ссылке</span>
+                  <div className="flex max-w-md flex-wrap items-center gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-0.5 rounded-xl border border-white/10 bg-black/30 px-2 font-mono text-xs text-white/90">
+                      <span className="shrink-0 text-white/35">/i/</span>
+                      <input
+                        className="min-w-0 flex-1 bg-transparent py-2 outline-none placeholder:text-white/25 focus:ring-0"
+                        value={doc.slug}
+                        onChange={(e) => setDoc((p) => ({ ...p, slug: e.target.value }))}
+                        onBlur={() => setDoc((p) => ({ ...p, slug: normalizeInviteSlug(p.slug) }))}
+                        spellCheck={false}
+                        autoComplete="off"
+                        placeholder="maga-yakor"
+                        aria-label="Сегмент URL приглашения"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="shrink-0 rounded-lg border border-white/10 px-2 py-1.5 text-[10px] font-medium text-white/55 hover:border-white/20 hover:text-white/80"
+                      onClick={() =>
+                        setDoc((p) => ({
+                          ...p,
+                          slug: slugHintFromTitle(inviteTitle.trim() || titlePlaceholder),
+                        }))
+                      }
+                    >
+                      Из названия
+                    </button>
+                  </div>
+                  <p className="text-[10px] leading-snug text-white/30">
+                    Только латиница, цифры и дефис; пробелы и кириллица преобразуются. Сохраните — откроется страница с новым адресом.
+                  </p>
+                </label>
+                <div className="flex min-w-0 flex-wrap items-center gap-2 pt-0.5">
+                  <span className="shrink-0 text-[10px] font-medium text-white/40">Ссылка для гостей</span>
+                  <a
+                    className="min-w-0 truncate text-xs font-semibold text-white/90 underline decoration-white/25 underline-offset-2 hover:text-white hover:decoration-white/45"
+                    href={openLink}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={`Публичная страница · полный адрес скопируйте кнопкой справа`}
+                  >
+                    {guestLinkLabel}
+                  </a>
+                  <button
+                    type="button"
+                    className={[
+                      "shrink-0 rounded-lg border px-2 py-1 text-[10px] font-semibold transition-colors",
+                      guestUrlCopied
+                        ? "border-emerald-500/35 bg-emerald-500/15 text-emerald-100"
+                        : "border-white/10 bg-white/[0.06] text-white/70 hover:border-white/20 hover:text-white/90",
+                    ].join(" ")}
+                    onClick={() => void copyGuestUrl()}
+                  >
+                    {guestUrlCopied ? "Скопировано" : "Копировать URL"}
+                  </button>
+                </div>
+              </div>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
               {saveError ? (
@@ -473,14 +626,6 @@ export default function EditorClient({
               ) : (
                 <span className="text-xs text-white/45">Черновик</span>
               )}
-              <a
-                className="h-9 rounded-2xl border border-white/10 bg-white/[0.04] px-3 text-xs font-medium leading-9 text-white/80 hover:border-white/20"
-                href={openLink}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Открыть
-              </a>
               <button
                 className="h-9 rounded-2xl bg-[var(--accent)] px-3 text-xs font-semibold text-black hover:opacity-95 active:opacity-90 disabled:opacity-50"
                 type="button"
@@ -520,7 +665,17 @@ export default function EditorClient({
                         className="pointer-events-none absolute left-1/2 top-[10px] z-30 h-[31px] w-[118px] -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_1px_rgba(255,255,255,0.11),0_4px_16px_rgba(0,0,0,0.55)]"
                         aria-hidden
                       />
-                      <div className="absolute inset-0 z-0" style={inviteBgStyle} />
+                      {doc.global.backgroundImage?.trim() ? (
+                        <>
+                          <div className="absolute inset-0 z-0" style={inviteBackgroundImageLayerStyle(doc.global)} />
+                          <div
+                            className="pointer-events-none absolute inset-0 z-[1]"
+                            style={inviteBackgroundScrimStyle(doc.global)}
+                          />
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 z-0" style={inviteBackgroundFallbackStyle()} />
+                      )}
                       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(500px_420px_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
                       <InviteOverlayLayers animations={effectiveOverlayAnimations(doc)} seed={doc.slug} />
 
@@ -850,10 +1005,9 @@ export default function EditorClient({
                                 {b.videoUrl ? (
                                   <video
                                     src={b.videoUrl}
-                                    muted
                                     playsInline
                                     loop
-                                    autoPlay
+                                    controls
                                     className="h-full w-full object-cover"
                                   />
                                 ) : null}
@@ -1016,9 +1170,9 @@ export default function EditorClient({
                       href={openLink}
                       target="_blank"
                       rel="noreferrer"
-                      className="h-10 rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-xs font-semibold leading-10 text-white/80 hover:border-white/20"
+                      className="h-10 max-w-[min(100%,320px)] truncate rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-center text-xs font-semibold leading-10 text-white/90 hover:border-white/20"
                     >
-                      Открыть публичную ссылку
+                      {guestLinkLabel}
                     </a>
                   </div>
                 </div>
@@ -1083,6 +1237,30 @@ export default function EditorClient({
                     e.target.value = "";
                   }}
                 />
+              </label>
+
+              <label
+                className={[
+                  "grid gap-1",
+                  !doc.global.backgroundImage?.trim() ? "pointer-events-none opacity-45" : "",
+                ].join(" ")}
+              >
+                <div className="flex items-center justify-between text-[11px] font-medium text-white/55">
+                  <span>Яркость фона</span>
+                  <span className="text-white/35">{Math.round((doc.global.backgroundBrightness ?? 1) * 100)}%</span>
+                </div>
+                <Slider
+                  min={0.35}
+                  max={1.35}
+                  step={0.05}
+                  value={doc.global.backgroundBrightness ?? 1}
+                  onChange={(v) =>
+                    setDoc((p) => ({ ...p, global: { ...p.global, backgroundBrightness: v } }))
+                  }
+                />
+                {!doc.global.backgroundImage?.trim() ? (
+                  <p className="text-[10px] text-white/35">Сначала укажите или загрузите фоновое изображение</p>
+                ) : null}
               </label>
 
               <label className="grid gap-1">
@@ -1361,7 +1539,7 @@ export default function EditorClient({
 
               <a
                 className="inline-flex h-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-3 text-[11px] font-semibold text-white/75 hover:border-white/20"
-                href={`/api/invites/${encodeURIComponent(doc.slug)}/responses`}
+                href={`/api/invites/${encodeURIComponent(apiSlug)}/responses`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -1622,9 +1800,14 @@ export default function EditorClient({
 
                   <label className="grid gap-1">
                     <div className="text-[11px] font-medium text-white/55">Видео (URL или файл mp4)</div>
+                    <p className="text-[10px] leading-snug text-white/40">
+                      Прямая ссылка на <span className="text-white/55">.mp4</span> / <span className="text-white/55">.webm</span>{" "}
+                      — надёжный вариант. Файл с устройства: до ~4 MB загрузится без CORS; больше — нужна настройка CORS на
+                      бакете S3 в Timeweb или сожмите видео.
+                    </p>
                     <input
                       className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none placeholder:text-white/30 focus:border-white/20"
-                      placeholder="https://..."
+                      placeholder="https://.../video.mp4"
                       value={(selectedBlock as any).videoUrl ?? ""}
                       onChange={(e) => updateBlock("video", { videoUrl: e.target.value } as any)}
                     />

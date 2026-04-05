@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
+
+export const maxDuration = 60;
 import { getSessionTokenFromCookies, verifyAdminSession } from "@/lib/session";
 import { uploadPublicObject, getMissingS3EnvKeys, isS3Configured, S3_VERCEL_HINT } from "@/lib/s3Upload";
-import { safeUploadFileName, validateUploadFile } from "@/lib/uploadRules";
+import { safeUploadFileName, UPLOAD_PROXY_MAX_BYTES, validateUploadFile } from "@/lib/uploadRules";
 
-/** Прокси-загрузка через Vercel (лимит тела ~4.5 MB). Для больших файлов используйте POST /api/upload/presign. */
+/** Прокси-загрузка через Vercel (лимит тела ~4.5 MB). Для больших файлов — POST /api/upload/presign + PUT в S3 (нужен CORS на бакете). */
 export async function POST(req: Request) {
   const secret = process.env.AUTH_SECRET;
   const token = await getSessionTokenFromCookies();
@@ -29,6 +31,15 @@ export async function POST(req: Request) {
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Нет файла" }, { status: 400 });
+  }
+
+  if (file.size > UPLOAD_PROXY_MAX_BYTES) {
+    return NextResponse.json(
+      {
+        error: `Файл больше ${Math.floor(UPLOAD_PROXY_MAX_BYTES / (1024 * 1024))} MB — используйте прямую загрузку (presign) после настройки CORS на бакете S3.`,
+      },
+      { status: 413 },
+    );
   }
 
   const v = validateUploadFile({ name: file.name, type: file.type || "application/octet-stream", size: file.size });

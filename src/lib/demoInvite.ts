@@ -12,6 +12,7 @@ export function createDemoInvite(slug: string): InviteDoc {
       fontSizePx: 16,
       textColor: "rgba(255,255,255,0.92)",
       backgroundImage: "",
+      backgroundBrightness: 1,
       overlayOpacity: 0.55,
       showBlockTitles: false,
       overlayAnimations: [

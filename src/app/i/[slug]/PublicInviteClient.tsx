@@ -8,6 +8,11 @@ import { publicBlockLabel } from "@/lib/blockLabels";
 import { StoryItemImage } from "@/components/StoryItemImage";
 import { MapVenueBlock } from "@/components/MapVenueBlock";
 import { InviteOverlayLayers } from "@/components/InviteOverlayLayers";
+import {
+  inviteBackgroundFallbackStyle,
+  inviteBackgroundImageLayerStyle,
+  inviteBackgroundScrimStyle,
+} from "@/lib/inviteBackgroundStyle";
 
 function safeParseDoc(raw: string | null): InviteDoc | null {
   if (!raw) return null;
@@ -149,9 +154,14 @@ function fontClass(font: InviteDoc["global"]["fontFamily"]) {
   }
 }
 
+function musicVolStorageKey(slug: string) {
+  return `vaytoy-music-vol:${slug}`;
+}
+
 export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }) {
   const [doc, setDoc] = useState<InviteDoc>(fallback);
   const [playing, setPlaying] = useState(false);
+  const [musicVolume, setMusicVolume] = useState(0.85);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [guestBusy, setGuestBusy] = useState(false);
@@ -174,6 +184,34 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
     const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(musicVolStorageKey(doc.slug));
+      if (raw === null) return;
+      const n = Number(raw);
+      if (!Number.isNaN(n) && n >= 0 && n <= 1) setMusicVolume(n);
+    } catch {
+      /* ignore */
+    }
+  }, [doc.slug]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(musicVolStorageKey(doc.slug), String(musicVolume));
+    } catch {
+      /* ignore */
+    }
+  }, [doc.slug, musicVolume]);
+
+  useEffect(() => {
+    setPlaying(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+  }, [doc.audioUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -202,30 +240,29 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
     [doc.global.fontSizePx, doc.global.textColor],
   );
 
-  const inviteBgStyle: React.CSSProperties = useMemo(() => {
-    if (doc.global.backgroundImage) {
-      return {
-        backgroundImage: `linear-gradient(180deg, rgba(0,0,0,${doc.global.overlayOpacity}), rgba(0,0,0,${
-          doc.global.overlayOpacity + 0.2
-        })), url(${doc.global.backgroundImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      };
-    }
-    return {
-      background:
-        "radial-gradient(520px 420px at 50% 0%, rgba(168,85,247,0.14), transparent 60%), radial-gradient(520px 420px at 50% 0%, rgba(255,106,61,0.10), transparent 62%), rgba(255,255,255,0.03)",
-    };
-  }, [doc.global.backgroundImage, doc.global.overlayOpacity]);
+  const hasCustomBg = Boolean(doc.global.backgroundImage?.trim());
+
+  function applyVolumeToAudio(v: number) {
+    if (audioRef.current) audioRef.current.volume = v;
+  }
+
+  function setMusicVolumeAndAudio(v: number) {
+    const next = Math.min(1, Math.max(0, v));
+    setMusicVolume(next);
+    applyVolumeToAudio(next);
+  }
 
   async function toggleMusic() {
     if (!doc.audioUrl) return;
-    if (!audioRef.current) audioRef.current = new Audio(doc.audioUrl);
-    audioRef.current.loop = true;
-    audioRef.current.volume = 0.85;
+    if (!audioRef.current) {
+      audioRef.current = new Audio(doc.audioUrl);
+      audioRef.current.loop = true;
+      audioRef.current.volume = musicVolume;
+    }
 
     try {
       if (!playing) {
+        audioRef.current.volume = musicVolume;
         await audioRef.current.play();
         setPlaying(true);
       } else {
@@ -287,11 +324,27 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
   }
 
   return (
-    <main className="relative min-h-dvh w-full px-3 py-6">
-      <div className="pointer-events-none absolute inset-0 opacity-70">
-        <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_-10%,rgba(255,255,255,0.16),transparent_58%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.20),rgba(0,0,0,0.78))]" />
-      </div>
+    <main className="relative min-h-dvh w-full">
+      {hasCustomBg ? (
+        <>
+          <div
+            className="fixed inset-0 z-0 bg-black"
+            style={inviteBackgroundImageLayerStyle(doc.global)}
+          />
+          <div
+            className="pointer-events-none fixed inset-0 z-[1]"
+            style={inviteBackgroundScrimStyle(doc.global)}
+          />
+        </>
+      ) : (
+        <div className="fixed inset-0 z-0" style={inviteBackgroundFallbackStyle()} />
+      )}
+      {!hasCustomBg ? (
+        <div className="pointer-events-none fixed inset-0 z-[2] opacity-70">
+          <div className="absolute inset-0 bg-[radial-gradient(900px_520px_at_50%_-10%,rgba(255,255,255,0.16),transparent_58%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.20),rgba(0,0,0,0.78))]" />
+        </div>
+      ) : null}
 
       {guestToast ? (
         <div className="fixed bottom-4 left-1/2 z-30 -translate-x-1/2 rounded-2xl border border-white/15 bg-black/80 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur">
@@ -300,26 +353,63 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
       ) : null}
 
       {doc.audioUrl ? (
-        <button
-          onClick={toggleMusic}
-          type="button"
-          className={[
-            "fixed right-3 top-3 z-20 h-11 rounded-2xl border border-white/10 px-4 text-xs font-semibold shadow-[0_35px_90px_rgba(0,0,0,0.55)] backdrop-blur",
-            playing ? "bg-[rgba(168,85,247,0.18)] text-white" : "bg-white/[0.06] text-white/85 hover:border-white/20",
-          ].join(" ")}
+        <div
+          className="fixed right-3 top-3 z-20 flex max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-2xl border border-white/12 bg-black/50 px-2.5 py-2 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:gap-3 sm:px-3"
+          role="group"
+          aria-label="Фоновая музыка"
         >
-          {playing ? "Музыка: вкл" : "Музыка: выкл"}
-        </button>
+          <span className="hidden text-[10px] font-semibold uppercase tracking-[0.12em] text-white/45 sm:inline">
+            Музыка
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={playing}
+            aria-label={playing ? "Выключить музыку" : "Включить музыку"}
+            onClick={() => void toggleMusic()}
+            className={[
+              "relative h-7 w-[46px] shrink-0 rounded-full border transition-colors",
+              playing
+                ? "border-[rgba(168,85,247,0.45)] bg-[rgba(168,85,247,0.22)]"
+                : "border-white/15 bg-white/[0.06] hover:border-white/25",
+            ].join(" ")}
+          >
+            <span
+              className={[
+                "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-all duration-200 ease-out",
+                playing ? "left-[24px]" : "left-0.5",
+              ].join(" ")}
+            />
+          </button>
+          <label className="flex min-w-0 flex-1 items-center gap-1.5 sm:max-w-[120px]">
+            <span className="sr-only">Громкость</span>
+            <svg className="h-3.5 w-3.5 shrink-0 text-white/40" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+              <path d="M3 10v4c0 .55.45 1 1 1h3l3.29 3.29c.63.63 1.71.18 1.71-.71V6.41c0-.89-1.08-1.34-1.71-.71L7 9H4c-.55 0-1 .45-1 1zm13.5 2A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 4.45v.15c2.76.77 4.8 3.25 4.8 6.4s-2.04 5.63-4.8 6.4v.15c3.53-.78 6.2-3.9 6.2-7.65S17.53 5.23 14 4.45z" />
+            </svg>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={musicVolume}
+              onChange={(e) => setMusicVolumeAndAudio(Number(e.target.value))}
+              className="h-1.5 w-full min-w-[64px] cursor-pointer accent-[rgba(168,85,247,0.9)] [color-scheme:dark]"
+            />
+          </label>
+        </div>
       ) : null}
 
-      <div className="mx-auto w-full max-w-[420px]">
+      <div className="relative z-10 mx-auto w-full max-w-[420px] px-3 py-6">
         <div
-          className={["relative overflow-hidden rounded-[28px] border border-white/10", globalFontClass].join(" ")}
+          className={["relative overflow-hidden rounded-[28px] border border-white/15 bg-black/25 shadow-[0_40px_120px_rgba(0,0,0,0.45)] backdrop-blur-[2px]", globalFontClass].join(" ")}
           style={inviteFrameStyle}
         >
-          <div className="absolute inset-0 z-0" style={inviteBgStyle} />
-          <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(520px_420px_at_50%_0%,rgba(255,255,255,0.10),transparent_60%)]" />
-          <InviteOverlayLayers animations={doc.global.overlayAnimations ?? []} seed={doc.slug} />
+          <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(520px_420px_at_50%_0%,rgba(255,255,255,0.08),transparent_60%)]" />
+          <InviteOverlayLayers
+            animations={doc.global.overlayAnimations ?? []}
+            seed={doc.slug}
+            position="fixed"
+          />
 
           <div className="relative z-10 min-w-0 space-y-3 p-3">
             {doc.blocks
@@ -567,7 +657,13 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                         }}
                       >
                         {b.videoUrl ? (
-                          <video src={b.videoUrl} muted playsInline loop autoPlay className="h-full w-full object-cover" />
+                          <video
+                            src={b.videoUrl}
+                            playsInline
+                            loop
+                            controls
+                            className="h-full w-full object-cover"
+                          />
                         ) : null}
                       </div>
                     </section>

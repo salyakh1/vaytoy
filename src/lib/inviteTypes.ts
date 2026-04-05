@@ -42,6 +42,8 @@ export type GlobalStyle = {
   fontSizePx: number; // 14..22 typical
   textColor: string; // css color
   backgroundImage?: string; // url (later: asset id)
+  /** Яркость фонового изображения, ~0.35…1.35 (1 = как в файле). */
+  backgroundBrightness?: number;
   overlayOpacity: number; // 0..1
   /** Заголовки секций на публичной странице («Видео», «История»…). По умолчанию скрыты. */
   showBlockTitles?: boolean;

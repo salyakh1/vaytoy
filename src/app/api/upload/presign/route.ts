@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const maxDuration = 60;
 import { randomBytes } from "node:crypto";
 import { getSessionTokenFromCookies, verifyAdminSession } from "@/lib/session";
 import { getPresignedPutUrl, getMissingS3EnvKeys, isS3Configured, publicUrlForS3Key, S3_VERCEL_HINT } from "@/lib/s3Upload";

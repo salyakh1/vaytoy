@@ -16,18 +16,21 @@ export default async function EditInvitePage({ params }: Props) {
 
   let initial: InviteDoc = createDemoInvite(slug);
   let initialPublished = false;
+  let initialTitle = "";
 
   if (process.env.DATABASE_URL) {
     try {
       const row = await prisma.invitation.findUnique({ where: { slug } });
       if (row) {
         initial = mergeInviteWithDefaults(slug, row.data as InviteDoc);
+        initial = { ...initial, slug: row.slug };
         initialPublished = row.published;
+        initialTitle = row.title ?? "";
       }
     } catch {
       // БД недоступна — демо
     }
   }
 
-  return <EditorClient initial={initial} initialPublished={initialPublished} />;
+  return <EditorClient initial={initial} initialPublished={initialPublished} initialTitle={initialTitle} />;
 }

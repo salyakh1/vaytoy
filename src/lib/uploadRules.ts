@@ -1,5 +1,8 @@
 export const UPLOAD_MAX_SIZE = 80 * 1024 * 1024; // 80 MB
 
+/** Прокси через Vercel/Next (POST /api/upload): без CORS в браузере; лимит тела на Vercel ~4.5 MB. */
+export const UPLOAD_PROXY_MAX_BYTES = 4 * 1024 * 1024;
+
 export const UPLOAD_ALLOWED: Record<string, string[]> = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],

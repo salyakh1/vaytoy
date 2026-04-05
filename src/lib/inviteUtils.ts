@@ -65,3 +65,12 @@ function escapeIcsText(s: string) {
   return s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
+/** Название в списке приглашений по умолчанию (если не задано своё имя в редакторе). */
+export function defaultInviteListTitle(doc: InviteDoc): string {
+  const names = doc.blocks.find((b) => b.kind === "names");
+  if (names && "bride" in names && "groom" in names) {
+    return `${names.bride} & ${names.groom}`;
+  }
+  return doc.slug;
+}
+

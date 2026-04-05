@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import type { InviteDoc } from "@/lib/inviteTypes";
+import { inviteSlugValidationMessage, normalizeInviteSlug } from "@/lib/inviteSlug";
+import { defaultInviteListTitle } from "@/lib/inviteUtils";
 import { prisma } from "@/lib/prisma";
 import { getSessionTokenFromCookies, verifyAdminSession } from "@/lib/session";
 
@@ -47,38 +49,96 @@ export async function PUT(req: Request, ctx: { params: Promise<{ slug: string }>
   }
 
   const { slug } = await ctx.params;
-  const body = (await req.json()) as { doc?: InviteDoc; published?: boolean };
+  const body = (await req.json()) as { doc?: InviteDoc; published?: boolean; title?: string };
   if (!body.doc || typeof body.doc !== "object") {
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
   const doc = body.doc;
-  if (doc.slug !== slug) {
-    return NextResponse.json({ error: "slug mismatch" }, { status: 400 });
+  const paramSlug = slug;
+  const desiredSlug = normalizeInviteSlug(doc.slug);
+  const slugMsg = inviteSlugValidationMessage(desiredSlug);
+  if (slugMsg) {
+    return NextResponse.json({ error: slugMsg }, { status: 400 });
   }
 
   const published = Boolean(body.published);
-  const names = doc.blocks.find((b) => b.kind === "names");
+  const derived = defaultInviteListTitle({ ...doc, slug: desiredSlug });
   const title =
-    names && "bride" in names && "groom" in names ? `${names.bride} & ${names.groom}` : slug;
+    typeof body.title === "string" && body.title.trim().length > 0 ? body.title.trim() : derived;
+
+  const docToSave: InviteDoc = { ...doc, slug: desiredSlug };
 
   try {
-    const row = await prisma.invitation.upsert({
-      where: { slug },
-      create: {
-        slug,
-        data: doc as object,
-        published,
-        title: title || slug,
-      },
-      update: {
-        data: doc as object,
-        published,
-        title: title || slug,
-      },
+    const existingParam = await prisma.invitation.findUnique({ where: { slug: paramSlug } });
+
+    if (!existingParam) {
+      const taken = await prisma.invitation.findUnique({ where: { slug: desiredSlug } });
+      if (taken) {
+        return NextResponse.json({ error: "Этот адрес уже занят. Выберите другой." }, { status: 409 });
+      }
+      const row = await prisma.invitation.create({
+        data: {
+          slug: desiredSlug,
+          data: docToSave as object,
+          published,
+          title: title || desiredSlug,
+        },
+      });
+      return NextResponse.json({
+        ok: true,
+        invitation: { slug: row.slug, published: row.published, title: row.title },
+      });
+    }
+
+    if (paramSlug === desiredSlug) {
+      const row = await prisma.invitation.update({
+        where: { slug: paramSlug },
+        data: {
+          data: docToSave as object,
+          published,
+          title: title || desiredSlug,
+        },
+      });
+      return NextResponse.json({
+        ok: true,
+        invitation: { slug: row.slug, published: row.published, title: row.title },
+      });
+    }
+
+    const taken = await prisma.invitation.findUnique({ where: { slug: desiredSlug } });
+    if (taken) {
+      return NextResponse.json({ error: "Этот адрес уже занят. Выберите другой." }, { status: 409 });
+    }
+
+    await prisma.$transaction([
+      prisma.guestResponse.updateMany({
+        where: { invitationSlug: paramSlug },
+        data: { invitationSlug: desiredSlug },
+      }),
+      prisma.invitation.update({
+        where: { slug: paramSlug },
+        data: {
+          slug: desiredSlug,
+          data: docToSave as object,
+          published,
+          title: title || desiredSlug,
+        },
+      }),
+    ]);
+
+    const row = await prisma.invitation.findUnique({ where: { slug: desiredSlug } });
+    if (!row) {
+      return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
+    }
+    return NextResponse.json({
+      ok: true,
+      invitation: { slug: row.slug, published: row.published, title: row.title },
     });
-    return NextResponse.json({ ok: true, invitation: { slug: row.slug, published: row.published } });
-  } catch {
+  } catch (e) {
+    if (e && typeof e === "object" && "code" in e && (e as { code: string }).code === "P2002") {
+      return NextResponse.json({ error: "Этот адрес уже занят." }, { status: 409 });
+    }
     return NextResponse.json({ error: "Database unavailable" }, { status: 503 });
   }
 }
