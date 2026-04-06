@@ -355,7 +355,11 @@ export default function EditorClient({
   function addSlideItem(seed?: Partial<SlideItem>) {
     const b = doc.blocks.find((x) => x.kind === "slides");
     if (!b || b.kind !== "slides") return;
-    const next: SlideItem = { shape: seed?.shape ?? "square", imageUrl: seed?.imageUrl };
+    const next: SlideItem = {
+      shape: seed?.shape ?? "square",
+      imageUrl: seed?.imageUrl,
+      imageWidthPct: seed?.imageWidthPct ?? 100,
+    };
     setSlideItems([...b.items, next]);
   }
 
@@ -2186,12 +2190,37 @@ export default function EditorClient({
                           }}
                         />
                       </label>
+                      {it.imageUrl ? (
+                        <div className="mt-3 grid gap-2">
+                          <div className="mt-1">
+                            <StoryItemImage
+                              imageUrl={it.imageUrl}
+                              shape={it.shape}
+                              widthPct={it.imageWidthPct ?? 100}
+                              variant="preview"
+                            />
+                          </div>
+                          <label className="grid gap-1">
+                            <div className="flex items-center justify-between text-[11px] font-medium text-white/55">
+                              <span>Размер (ширина)</span>
+                              <span className="text-white/35">{it.imageWidthPct ?? 100}%</span>
+                            </div>
+                            <Slider
+                              min={40}
+                              max={100}
+                              step={5}
+                              value={it.imageWidthPct ?? 100}
+                              onChange={(v) => patchSlideItem(idx, { imageWidthPct: v })}
+                            />
+                          </label>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                   <button
                     type="button"
                     className="h-10 w-full rounded-2xl border border-white/10 bg-white/[0.06] text-[11px] font-semibold text-white/85 hover:border-white/20"
-                    onClick={() => addSlideItem({ shape: "square" })}
+                    onClick={() => addSlideItem({ shape: "square", imageWidthPct: 100 })}
                   >
                     + Слайд
                   </button>

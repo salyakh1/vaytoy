@@ -36,7 +36,7 @@ export function SlidesBlockView({ items, orientation, variant = "public" }: Prop
             <StoryItemImage
               imageUrl={it.imageUrl}
               shape={it.shape}
-              widthPct={100}
+              widthPct={it.imageWidthPct ?? 100}
               variant={variant}
             />
           ) : (

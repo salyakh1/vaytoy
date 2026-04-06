@@ -208,6 +208,8 @@ export type StoryBlock = {
 export type SlideItem = {
   imageUrl?: string;
   shape: StoryImageShape;
+  /** Ширина картинки в % от карточки слайда (40–100). По умолчанию 100. */
+  imageWidthPct?: number;
 };
 
 /** Слайдер фото: горизонтальная или вертикальная прокрутка. */
