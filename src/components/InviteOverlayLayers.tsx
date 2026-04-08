@@ -26,8 +26,8 @@ export function InviteOverlayLayers({
 
   return (
     <div className={posClass}>
-      {active.map((a) => (
-        <div key={a.id} className="absolute inset-0 overflow-hidden">
+      {active.map((a, idx) => (
+        <div key={`${a.id}:${idx}`} className="absolute inset-0 overflow-hidden">
           {a.kind === "hearts" ? (
             <FloatingHeartsLayer seed={`${seed}-${a.id}`} color={a.color ?? DEFAULT_HEARTS_COLOR} />
           ) : (

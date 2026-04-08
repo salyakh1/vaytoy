@@ -4,11 +4,16 @@ import type { InviteDoc, OverlayAnimation } from "./inviteTypes";
 /** Цвет букв по умолчанию (если в документе не задан). */
 export const DEFAULT_LETTERS_COLOR = "rgba(255,255,255,0.9)";
 
+let overlayAnimSeq = 0;
+
 export function newOverlayAnimId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
+    overlayAnimSeq += 1;
+    return `${crypto.randomUUID()}-${overlayAnimSeq}`;
   }
-  return `anim-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  overlayAnimSeq += 1;
+  // Даже при кликах “в один и тот же ms” гарантируем уникальность ключа.
+  return `anim-${Date.now()}-${overlayAnimSeq}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export function createHeartsAnimation(partial?: Partial<Extract<OverlayAnimation, { kind: "hearts" }>>): OverlayAnimation {
