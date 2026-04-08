@@ -165,7 +165,6 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
   const [musicVolume, setMusicVolume] = useState(0.85);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const autoplayTriedRef = useRef<string | null>(null);
-  const [musicUiExpanded, setMusicUiExpanded] = useState(false);
   const [musicNeedsTap, setMusicNeedsTap] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [guestBusy, setGuestBusy] = useState(false);
@@ -211,7 +210,6 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
   useEffect(() => {
     setPlaying(false);
     setMusicNeedsTap(false);
-    setMusicUiExpanded(false);
     autoplayTriedRef.current = null;
     if (audioRef.current) {
       audioRef.current.pause();
@@ -268,8 +266,12 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
       audioRef.current.preload = "auto";
     }
     try {
+      // Максимально приближаем к «играет сразу»: некоторые браузеры охотнее
+      // позволяют autoplay, если стартовать muted. Затем пытаемся включить звук.
+      audioRef.current.muted = true;
       audioRef.current.volume = musicVolume;
       await audioRef.current.play();
+      audioRef.current.muted = false;
       setPlaying(true);
       setMusicNeedsTap(false);
       return true;
@@ -403,40 +405,27 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                 </svg>
               </div>
 
-              <button
-                type="button"
-                className="min-w-0 flex-1 text-left"
-                onClick={() => setMusicUiExpanded((v) => !v)}
-                aria-expanded={musicUiExpanded}
-                aria-label="Настройки музыки"
-              >
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <div className="truncate text-[12px] font-semibold text-white/90">Фоновая музыка</div>
-                  {musicNeedsTap && !playing ? (
-                    <span className="rounded-full border border-white/15 bg-black/25 px-2 py-0.5 text-[10px] font-semibold text-white/70">
-                      Нажмите, чтобы включить
-                    </span>
-                  ) : null}
                 </div>
                 <div className="mt-0.5 text-[11px] text-white/55">
-                  {playing ? "Играет" : musicNeedsTap ? "Автостарт заблокирован" : "Пауза"}
+                  {playing ? "Включена" : musicNeedsTap ? "Автовключение заблокировано браузером" : "Выключена"}
                 </div>
-              </button>
+              </div>
 
               <button
                 type="button"
                 className={[
                   "relative h-10 w-10 shrink-0 rounded-2xl border border-white/15 transition",
-                  playing
-                    ? "bg-[rgba(168,85,247,0.22)] shadow-[0_18px_45px_rgba(168,85,247,0.20)]"
-                    : "bg-black/25 hover:bg-black/30",
+                  playing ? "bg-black/25 hover:bg-black/30" : "bg-[rgba(168,85,247,0.22)] shadow-[0_18px_45px_rgba(168,85,247,0.20)]",
                 ].join(" ")}
                 onClick={() => void toggleMusic()}
                 aria-label={playing ? "Выключить музыку" : "Включить музыку"}
               >
                 {playing ? (
                   <svg className="mx-auto h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                    <path d="M6 5h4v14H6V5zm8 0h4v14h-4V5z" />
+                    <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
                   </svg>
                 ) : (
                   <svg className="mx-auto h-5 w-5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -445,26 +434,6 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                 )}
               </button>
             </div>
-
-            {musicUiExpanded ? (
-              <div className="relative border-t border-white/10 px-3 pb-3 pt-2.5 sm:px-4">
-                <div className="flex items-center gap-3">
-                  <div className="text-[11px] font-semibold text-white/60">Громкость</div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={musicVolume}
-                    onChange={(e) => setMusicVolumeAndAudio(Number(e.target.value))}
-                    className="h-1.5 w-full cursor-pointer accent-[rgba(168,85,247,0.9)] [color-scheme:dark]"
-                  />
-                  <div className="w-10 text-right text-[11px] font-semibold tabular-nums text-white/60">
-                    {Math.round(musicVolume * 100)}%
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
       ) : null}
