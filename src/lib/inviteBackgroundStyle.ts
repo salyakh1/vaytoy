@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { GlobalStyle } from "./inviteTypes";
+import type { BackgroundVideoBehavior, GlobalStyle } from "./inviteTypes";
 
 /** Множитель яркости фонового изображения (0.35…1.35). */
 export function globalBackgroundBrightness(g: GlobalStyle): number {
@@ -30,4 +30,28 @@ export function inviteBackgroundFallbackStyle(): CSSProperties {
     background:
       "radial-gradient(520px 420px at 50% 0%, rgba(168,85,247,0.14), transparent 60%), radial-gradient(520px 420px at 50% 0%, rgba(255,106,61,0.10), transparent 62%), rgba(255,255,255,0.03)",
   };
+}
+
+/** Паузы фонового видео: уникальные секунды по возрастанию. */
+export function normalizeBackgroundVideoBehavior(raw: unknown): BackgroundVideoBehavior {
+  if (raw === "introThenLoopTail") return "introThenLoopTail";
+  return "freezeAtPauses";
+}
+
+export function normalizeBackgroundVideoLoopFromSec(raw: unknown): number | undefined {
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return Math.min(86400, n);
+}
+
+export function normalizeBackgroundVideoPauseAtSec(raw: unknown): number[] | undefined {
+  if (raw === undefined || raw === null) return undefined;
+  if (!Array.isArray(raw)) return undefined;
+  const nums = raw.map((x) => Number(x)).filter((n) => !Number.isNaN(n) && n >= 0);
+  if (nums.length === 0) return undefined;
+  return [...new Set(nums)].sort((a, b) => a - b);
+}
+
+export function hasInviteBackgroundMedia(g: GlobalStyle): boolean {
+  return Boolean(g.backgroundVideoUrl?.trim() || g.backgroundImage?.trim());
 }

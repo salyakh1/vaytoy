@@ -22,12 +22,19 @@ import {
   hexOrFallbackForPicker,
 } from "@/lib/overlayAnimMerge";
 import { MapVenueBlock } from "@/components/MapVenueBlock";
-import { BLOCKS_REVEAL_OPTIONS, inviteBlockRevealProps, normalizeBlocksRevealMode } from "@/lib/blocksRevealAnimation";
+import {
+  BLOCKS_REVEAL_OPTIONS,
+  inviteBlockRevealProps,
+  normalizeBlocksRevealDurationSec,
+  normalizeBlocksRevealMode,
+} from "@/lib/blocksRevealAnimation";
 import { INVITE_FONT_OPTIONS, inviteFontClass } from "@/lib/inviteFontFamilies";
 import { blockCardBorderClass, blockShowsSectionTitle, mergeBlockStyle } from "@/lib/inviteTypes";
 import { buildWeddingIcs, defaultInviteListTitle, formatCountdown } from "@/lib/inviteUtils";
 import { UPLOAD_PROXY_MAX_BYTES } from "@/lib/uploadRules";
+import { InviteBackgroundVideo } from "@/components/InviteBackgroundVideo";
 import {
+  hasInviteBackgroundMedia,
   inviteBackgroundFallbackStyle,
   inviteBackgroundImageLayerStyle,
   inviteBackgroundScrimStyle,
@@ -698,9 +705,13 @@ export default function EditorClient({
                         className="pointer-events-none absolute left-1/2 top-[10px] z-30 h-[31px] w-[118px] -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_1px_rgba(255,255,255,0.11),0_4px_16px_rgba(0,0,0,0.55)]"
                         aria-hidden
                       />
-                      {doc.global.backgroundImage?.trim() ? (
+                      {hasInviteBackgroundMedia(doc.global) ? (
                         <>
-                          <div className="absolute inset-0 z-0" style={inviteBackgroundImageLayerStyle(doc.global)} />
+                          {doc.global.backgroundVideoUrl?.trim() ? (
+                            <InviteBackgroundVideo global={doc.global} position="absolute" />
+                          ) : (
+                            <div className="absolute inset-0 z-0" style={inviteBackgroundImageLayerStyle(doc.global)} />
+                          )}
                           <div
                             className="pointer-events-none absolute inset-0 z-[1]"
                             style={inviteBackgroundScrimStyle(doc.global)}
@@ -729,7 +740,7 @@ export default function EditorClient({
                         const secTitle = blockShowsSectionTitle(b, doc.global.showBlockTitles === true);
                         const sectionBase = ["min-w-0 max-w-full", blockCardBorderClass(b), "p-5"].join(" ");
                         const revealMode = normalizeBlocksRevealMode(doc.global.blocksRevealMode);
-                        const reveal = inviteBlockRevealProps(revealMode, blockIdx);
+                        const reveal = inviteBlockRevealProps(revealMode, blockIdx, doc.global.blocksRevealDurationSec);
                         const blockStyle = { ...cardStyle, ...reveal.style };
 
                         if (b.kind === "nav") {
@@ -1379,6 +1390,27 @@ export default function EditorClient({
               </label>
 
               <label className="grid gap-1">
+                <div className="flex items-center justify-between text-[11px] font-medium text-white/55">
+                  <span>Длительность появления блока</span>
+                  <span className="text-white/35">
+                    {normalizeBlocksRevealDurationSec(doc.global.blocksRevealDurationSec).toFixed(2)} с
+                  </span>
+                </div>
+                <Slider
+                  min={0.25}
+                  max={8}
+                  step={0.05}
+                  value={normalizeBlocksRevealDurationSec(doc.global.blocksRevealDurationSec)}
+                  onChange={(v) =>
+                    setDoc((p) => ({ ...p, global: { ...p.global, blocksRevealDurationSec: v } }))
+                  }
+                />
+                <p className="text-[10px] leading-snug text-white/35">
+                  Одна анимация входа для каждого блока. В режиме «Каскад» шаг между блоками считается от этой длительности.
+                </p>
+              </label>
+
+              <label className="grid gap-1">
                 <div className="text-[11px] font-medium text-white/55">Фон (URL или файл)</div>
                 <input
                   className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none placeholder:text-white/30 focus:border-white/20"
@@ -1401,10 +1433,152 @@ export default function EditorClient({
                 />
               </label>
 
+              <label className="grid gap-1">
+                <div className="text-[11px] font-medium text-white/55">Фоновое видео (URL или файл)</div>
+                <input
+                  className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none placeholder:text-white/30 focus:border-white/20"
+                  placeholder="https://… (mp4, webm)"
+                  value={doc.global.backgroundVideoUrl ?? ""}
+                  onChange={(e) =>
+                    setDoc((p) => ({ ...p, global: { ...p.global, backgroundVideoUrl: e.target.value } }))
+                  }
+                />
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  className="text-[11px] text-white/60 file:mr-2 file:rounded-xl file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-xs file:text-white/80"
+                  disabled={Boolean(uploading)}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f)
+                      void uploadAsset("background-video", f, (url) =>
+                        setDoc((p) => ({ ...p, global: { ...p.global, backgroundVideoUrl: url } })),
+                      );
+                    e.target.value = "";
+                  }}
+                />
+                <p className="text-[10px] leading-snug text-white/35">
+                  Если задано видео, на госте оно вместо картинки. Режим воспроизведения — ниже.
+                </p>
+              </label>
+
+              <label className="grid gap-1">
+                <div className="text-[11px] font-medium text-white/55">Режим фонового видео</div>
+                <select
+                  className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none focus:border-white/20"
+                  value={doc.global.backgroundVideoBehavior ?? "freezeAtPauses"}
+                  onChange={(e) => {
+                    const v = e.target.value as NonNullable<InviteDoc["global"]["backgroundVideoBehavior"]>;
+                    setDoc((p) => ({
+                      ...p,
+                      global: {
+                        ...p.global,
+                        backgroundVideoBehavior: v,
+                        ...(v === "introThenLoopTail" && p.global.backgroundVideoLoopFromSec == null
+                          ? { backgroundVideoLoopFromSec: 10 }
+                          : {}),
+                      },
+                    }));
+                  }}
+                >
+                  <option value="freezeAtPauses">Паузы на кадре</option>
+                  <option value="introThenLoopTail">Интро один раз, затем петля хвоста</option>
+                </select>
+                <p className="text-[10px] leading-snug text-white/35">
+                  «Паузы» — стоп на отметке. «Интро» — сначала один раз от начала до указанной секунды, потом хвост по кругу.
+                </p>
+              </label>
+
               <label
                 className={[
                   "grid gap-1",
-                  !doc.global.backgroundImage?.trim() ? "pointer-events-none opacity-45" : "",
+                  (doc.global.backgroundVideoBehavior ?? "freezeAtPauses") !== "introThenLoopTail"
+                    ? "pointer-events-none opacity-45"
+                    : "",
+                ].join(" ")}
+              >
+                <div className="flex items-center justify-between text-[11px] font-medium text-white/55">
+                  <span>Секунда начала петли (хвоста)</span>
+                  <span className="text-white/35">{doc.global.backgroundVideoLoopFromSec ?? "—"} с</span>
+                </div>
+                <input
+                  type="number"
+                  min={0.1}
+                  max={3600}
+                  step={0.1}
+                  className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none placeholder:text-white/30 focus:border-white/20"
+                  placeholder="10"
+                  value={doc.global.backgroundVideoLoopFromSec ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") {
+                      setDoc((p) => ({ ...p, global: { ...p.global, backgroundVideoLoopFromSec: undefined } }));
+                      return;
+                    }
+                    const n = parseFloat(raw);
+                    if (!Number.isFinite(n) || n <= 0) return;
+                    setDoc((p) => ({ ...p, global: { ...p.global, backgroundVideoLoopFromSec: n } }));
+                  }}
+                />
+                <p className="text-[10px] leading-snug text-white/35">
+                  Например, 10 — один раз играет 0…10 с, затем бесконечно крутит от 10 с до конца файла. Если секунда больше
+                  длины ролика — сначала весь ролик один раз, потом целиком по кругу.
+                </p>
+              </label>
+
+              <label
+                className={[
+                  "grid gap-1",
+                  (doc.global.backgroundVideoBehavior ?? "freezeAtPauses") === "introThenLoopTail"
+                    ? "pointer-events-none opacity-45"
+                    : "",
+                ].join(" ")}
+              >
+                <div className="text-[11px] font-medium text-white/55">Паузы видео (секунды, через запятую)</div>
+                <input
+                  className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none placeholder:text-white/30 focus:border-white/20"
+                  placeholder="например: 5, 12, 30"
+                  value={(doc.global.backgroundVideoPauseAtSec ?? []).join(", ")}
+                  onChange={(e) => {
+                    const parts = e.target.value
+                      .split(/[,;\s]+/)
+                      .map((s) => parseFloat(s.trim()))
+                      .filter((n) => !Number.isNaN(n) && n >= 0);
+                    setDoc((p) => ({
+                      ...p,
+                      global: {
+                        ...p.global,
+                        backgroundVideoPauseAtSec: parts.length ? parts : undefined,
+                      },
+                    }));
+                  }}
+                />
+                <p className="text-[10px] leading-snug text-white/35">
+                  До первой отметки ролик играет, затем стоп на кадре. Пусто — бесконечный цикл без пауз.
+                </p>
+              </label>
+
+              <label className="flex cursor-pointer items-start gap-2 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-white/20 bg-black/40"
+                  checked={doc.global.backgroundVideoMuted !== false}
+                  onChange={(e) =>
+                    setDoc((p) => ({
+                      ...p,
+                      global: { ...p.global, backgroundVideoMuted: e.target.checked },
+                    }))
+                  }
+                />
+                <span className="text-[11px] leading-snug text-white/65">
+                  Без звука у фонового видео (по умолчанию). Фоновая музыка приглашения настраивается отдельно.
+                </span>
+              </label>
+
+              <label
+                className={[
+                  "grid gap-1",
+                  !hasInviteBackgroundMedia(doc.global) ? "pointer-events-none opacity-45" : "",
                 ].join(" ")}
               >
                 <div className="flex items-center justify-between text-[11px] font-medium text-white/55">
@@ -1420,8 +1594,8 @@ export default function EditorClient({
                     setDoc((p) => ({ ...p, global: { ...p.global, backgroundBrightness: v } }))
                   }
                 />
-                {!doc.global.backgroundImage?.trim() ? (
-                  <p className="text-[10px] text-white/35">Сначала укажите или загрузите фоновое изображение</p>
+                {!hasInviteBackgroundMedia(doc.global) ? (
+                  <p className="text-[10px] text-white/35">Сначала укажите фон: изображение или видео</p>
                 ) : null}
               </label>
 

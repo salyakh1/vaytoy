@@ -10,10 +10,12 @@ import { StoryItemImage } from "@/components/StoryItemImage";
 import { MapVenueBlock } from "@/components/MapVenueBlock";
 import { InviteOverlayLayers } from "@/components/InviteOverlayLayers";
 import {
+  hasInviteBackgroundMedia,
   inviteBackgroundFallbackStyle,
   inviteBackgroundImageLayerStyle,
   inviteBackgroundScrimStyle,
 } from "@/lib/inviteBackgroundStyle";
+import { InviteBackgroundVideo } from "@/components/InviteBackgroundVideo";
 import { inviteFontClass } from "@/lib/inviteFontFamilies";
 import { mergeInviteWithDefaults } from "@/lib/inviteMerge";
 import { useBlocksRevealed } from "@/lib/useBlocksRevealed";
@@ -236,7 +238,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
     [doc.global.fontSizePx, doc.global.textColor],
   );
 
-  const hasCustomBg = Boolean(doc.global.backgroundImage?.trim());
+  const hasCustomBg = hasInviteBackgroundMedia(doc.global);
 
   function applyVolumeToAudio(v: number) {
     if (audioRef.current) audioRef.current.volume = v;
@@ -352,10 +354,14 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
     <main className="invite-public-root relative min-h-dvh w-full">
       {hasCustomBg ? (
         <>
-          <div
-            className="fixed inset-0 z-0 bg-black"
-            style={inviteBackgroundImageLayerStyle(doc.global)}
-          />
+          {doc.global.backgroundVideoUrl?.trim() ? (
+            <InviteBackgroundVideo global={doc.global} position="fixed" />
+          ) : (
+            <div
+              className="fixed inset-0 z-0 bg-black"
+              style={inviteBackgroundImageLayerStyle(doc.global)}
+            />
+          )}
           <div
             className="pointer-events-none fixed inset-0 z-[1]"
             style={inviteBackgroundScrimStyle(doc.global)}
@@ -463,7 +469,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                 const secTitle = blockShowsSectionTitle(b, doc.global.showBlockTitles === true);
                 const sectionClass = ["min-w-0 max-w-full", blockCardBorderClass(b), "p-5"].join(" ");
                 const revealMode = normalizeBlocksRevealMode(doc.global.blocksRevealMode);
-                const reveal = inviteBlockRevealProps(revealMode, blockIdx);
+                const reveal = inviteBlockRevealProps(revealMode, blockIdx, doc.global.blocksRevealDurationSec);
                 const sectionClassReveal = [sectionClass, reveal.className].join(" ");
                 const blockStyle = { ...cardStyle, ...reveal.style };
 

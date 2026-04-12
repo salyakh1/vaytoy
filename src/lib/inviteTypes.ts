@@ -47,11 +47,34 @@ export type BlockChrome = {
 /** Варианты появления блоков приглашения после задержки. */
 export type BlocksRevealMode = "fade" | "slideUp" | "zoom" | "blur" | "cascade";
 
+/** Режим фонового видео: паузы на кадре или интро один раз + петля хвоста. */
+export type BackgroundVideoBehavior = "freezeAtPauses" | "introThenLoopTail";
+
 export type GlobalStyle = {
   fontFamily: FontFamily;
   fontSizePx: number; // 14..22 typical
   textColor: string; // css color
   backgroundImage?: string; // url (later: asset id)
+  /** Фоновое видео (если задано — показывается вместо картинки). Не связывается с фоновой музыкой. */
+  backgroundVideoUrl?: string;
+  /**
+   * Секунды таймкода, на которых воспроизведение останавливается на кадре до ухода со страницы.
+   * Пусто — видео зацикливается. Берётся первый достигнутый маркер по времени.
+   * Используется при `backgroundVideoBehavior === "freezeAtPauses"` (или не задано).
+   */
+  backgroundVideoPauseAtSec?: number[];
+  /**
+   * `freezeAtPauses` — паузы на кадре по списку секунд.
+   * `introThenLoopTail` — один раз от начала до `backgroundVideoLoopFromSec`, затем бесконечная петля от этой секунды до конца файла.
+   */
+  backgroundVideoBehavior?: BackgroundVideoBehavior;
+  /**
+   * Секунда, с которой начинается петля «хвоста» (после однократного проигрывания 0…этой секунды).
+   * Имеет смысл при `introThenLoopTail`.
+   */
+  backgroundVideoLoopFromSec?: number;
+  /** Звук фонового видео. По умолчанию выкл — не пересекается с фоновой музыкой и автозапуском. */
+  backgroundVideoMuted?: boolean;
   /** Яркость фонового изображения, ~0.35…1.35 (1 = как в файле). */
   backgroundBrightness?: number;
   overlayOpacity: number; // 0..1
@@ -64,6 +87,8 @@ export type GlobalStyle = {
   blocksRevealDelaySec?: number;
   /** Как анимируется появление блоков после задержки (публичная страница и превью). */
   blocksRevealMode?: BlocksRevealMode;
+  /** Длительность одной анимации появления блока, секунды (по умолчанию ~1.5). */
+  blocksRevealDurationSec?: number;
   /**
    * Слои анимации между фоном и блоками (порядок = порядок наложения, последний выше).
    * Если undefined — используется миграция с `heartsSnow` / `heartsColor`.

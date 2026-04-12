@@ -188,8 +188,8 @@ body {
 
 .invite-public-root .invite-block-reveal,
 .invite-editor-device-preview .invite-block-reveal {
-  animation-duration: 0.75s;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  /* animation-duration задаётся inline из blocksRevealDurationSec */
+  animation-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1);
   animation-fill-mode: both;
 }
 
