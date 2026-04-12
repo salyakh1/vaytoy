@@ -19,7 +19,6 @@ import { InviteBackgroundVideo } from "@/components/InviteBackgroundVideo";
 import { inviteFontClass } from "@/lib/inviteFontFamilies";
 import { mergeInviteWithDefaults } from "@/lib/inviteMerge";
 import { useBlocksRevealed } from "@/lib/useBlocksRevealed";
-import { BlocksRevealPlaceholder } from "@/components/BlocksRevealPlaceholder";
 import { inviteBlockRevealProps, normalizeBlocksRevealMode } from "@/lib/blocksRevealAnimation";
 
 function safeParseDoc(raw: string | null): InviteDoc | null {
@@ -451,9 +450,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
           />
 
           <div className="relative z-10 min-w-0 space-y-3 p-3">
-            {!blocksRevealed ? (
-              <BlocksRevealPlaceholder />
-            ) : (
+            {blocksRevealed ? (
               <>
             {doc.blocks
               .filter((b) => b.enabled)
@@ -868,7 +865,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
             <div className="h-4" />
               </>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
