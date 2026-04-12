@@ -14,6 +14,8 @@ import {
   inviteBackgroundImageLayerStyle,
   inviteBackgroundScrimStyle,
 } from "@/lib/inviteBackgroundStyle";
+import { inviteFontClass } from "@/lib/inviteFontFamilies";
+import { mergeInviteWithDefaults } from "@/lib/inviteMerge";
 
 function safeParseDoc(raw: string | null): InviteDoc | null {
   if (!raw) return null;
@@ -140,21 +142,6 @@ function WishesCarousel({ wishes }: { wishes: { id: string; name: string; text: 
   );
 }
 
-function fontClass(font: InviteDoc["global"]["fontFamily"]) {
-  switch (font) {
-    case "serif":
-    case "georgia":
-    case "playfair":
-    case "cormorant":
-      return "font-serif";
-    case "inter":
-      return "font-sans";
-    case "ui":
-    default:
-      return "font-sans";
-  }
-}
-
 function musicVolStorageKey(slug: string) {
   return `vaytoy-music-vol:${slug}`;
 }
@@ -180,7 +167,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
     const url = new URL(window.location.href);
     const d = url.searchParams.get("d");
     const parsed = safeParseDoc(d);
-    if (parsed) setDoc(parsed);
+    if (parsed) setDoc(mergeInviteWithDefaults(parsed.slug, parsed));
   }, []);
 
   useEffect(() => {
@@ -235,7 +222,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
     };
   }, [doc.slug, wishesRefresh]);
 
-  const globalFontClass = fontClass(doc.global.fontFamily);
+  const globalFontClass = inviteFontClass(doc.global.fontFamily);
 
   const inviteFrameStyle: React.CSSProperties = useMemo(
     () => ({

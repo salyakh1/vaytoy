@@ -1,10 +1,15 @@
+/** Романтические веб-шрифты приглашения (10 вариантов, см. `inviteFontFamilies.ts` + `invite-fonts.css`). */
 export type FontFamily =
-  | "ui"
-  | "serif"
-  | "georgia"
-  | "inter"
   | "playfair"
-  | "cormorant";
+  | "cormorant"
+  | "greatVibes"
+  | "parisienne"
+  | "dancing"
+  | "libreBaskerville"
+  | "lora"
+  | "cinzel"
+  | "spectral"
+  | "marckScript";
 
 export type BlockKind =
   | "nav"

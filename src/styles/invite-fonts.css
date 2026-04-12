@@ -1,0 +1,45 @@
+/**
+ * Шрифты только для приглашения (превью + /i/…).
+ * Подключаются через layout `app/i/layout.tsx` и `app/invites/layout.tsx`.
+ */
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Dancing+Script:wght@400;600&family=Great+Vibes&family=Libre+Baskerville:ital,wght@0,400;0,700&family=Lora:ital,wght@0,400;0,600&family=Marck+Script&family=Parisienne&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Spectral:ital,wght@0,400;0,600&display=swap");
+
+.invite-font-playfair {
+  font-family: "Playfair Display", Georgia, "Times New Roman", serif;
+}
+
+.invite-font-cormorant {
+  font-family: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+}
+
+.invite-font-greatVibes {
+  font-family: "Great Vibes", cursive;
+}
+
+.invite-font-parisienne {
+  font-family: Parisienne, cursive;
+}
+
+.invite-font-dancing {
+  font-family: "Dancing Script", cursive;
+}
+
+.invite-font-libreBaskerville {
+  font-family: "Libre Baskerville", Georgia, "Times New Roman", serif;
+}
+
+.invite-font-lora {
+  font-family: Lora, Georgia, "Times New Roman", serif;
+}
+
+.invite-font-cinzel {
+  font-family: Cinzel, Georgia, "Times New Roman", serif;
+}
+
+.invite-font-spectral {
+  font-family: Spectral, Georgia, "Times New Roman", serif;
+}
+
+.invite-font-marckScript {
+  font-family: "Marck Script", cursive;
+}

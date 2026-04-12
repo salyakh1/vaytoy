@@ -22,6 +22,7 @@ import {
   hexOrFallbackForPicker,
 } from "@/lib/overlayAnimMerge";
 import { MapVenueBlock } from "@/components/MapVenueBlock";
+import { INVITE_FONT_OPTIONS, inviteFontClass } from "@/lib/inviteFontFamilies";
 import { blockCardBorderClass, blockShowsSectionTitle, mergeBlockStyle } from "@/lib/inviteTypes";
 import { buildWeddingIcs, defaultInviteListTitle, formatCountdown } from "@/lib/inviteUtils";
 import { UPLOAD_PROXY_MAX_BYTES } from "@/lib/uploadRules";
@@ -56,21 +57,6 @@ function Icon({ d }: { d: string }) {
       <path d={d} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
-}
-
-function fontClass(font: InviteDoc["global"]["fontFamily"]) {
-  switch (font) {
-    case "serif":
-    case "georgia":
-    case "playfair":
-    case "cormorant":
-      return "font-serif";
-    case "inter":
-      return "font-sans";
-    case "ui":
-    default:
-      return "font-sans";
-  }
 }
 
 function blockTitle(kind: BlockKind) {
@@ -481,7 +467,7 @@ export default function EditorClient({
     }
   }
 
-  const globalFontClass = fontClass(doc.global.fontFamily);
+  const globalFontClass = inviteFontClass(doc.global.fontFamily);
 
   const inviteFrameStyle: React.CSSProperties = {
     color: doc.global.textColor,
@@ -1297,15 +1283,17 @@ export default function EditorClient({
                   className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none focus:border-white/20"
                   value={doc.global.fontFamily}
                   onChange={(e) =>
-                    setDoc((p) => ({ ...p, global: { ...p.global, fontFamily: e.target.value as any } }))
+                    setDoc((p) => ({
+                      ...p,
+                      global: { ...p.global, fontFamily: e.target.value as InviteDoc["global"]["fontFamily"] },
+                    }))
                   }
                 >
-                  <option value="ui">UI</option>
-                  <option value="serif">Serif</option>
-                  <option value="georgia">Georgia</option>
-                  <option value="inter">Inter</option>
-                  <option value="playfair">Playfair</option>
-                  <option value="cormorant">Cormorant</option>
+                  {INVITE_FONT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
                 </select>
               </label>
 

@@ -8,7 +8,7 @@ export function createDemoInvite(slug: string): InviteDoc {
     slug,
     audioUrl: "",
     global: {
-      fontFamily: "serif",
+      fontFamily: "playfair",
       fontSizePx: 16,
       textColor: "rgba(255,255,255,0.92)",
       backgroundImage: "",
