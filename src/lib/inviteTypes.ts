@@ -44,6 +44,9 @@ export type BlockChrome = {
   showBorder?: boolean;
 };
 
+/** Варианты появления блоков приглашения после задержки. */
+export type BlocksRevealMode = "fade" | "slideUp" | "zoom" | "blur" | "cascade";
+
 export type GlobalStyle = {
   fontFamily: FontFamily;
   fontSizePx: number; // 14..22 typical
@@ -54,6 +57,13 @@ export type GlobalStyle = {
   overlayOpacity: number; // 0..1
   /** Заголовки секций на публичной странице («Видео», «История»…). По умолчанию скрыты. */
   showBlockTitles?: boolean;
+  /**
+   * Задержка перед показом блоков при открытии приглашения (секунды). 0 — показать сразу.
+   * Фон и рамка карточки остаются; скрывается только контент блоков до истечения времени.
+   */
+  blocksRevealDelaySec?: number;
+  /** Как анимируется появление блоков после задержки (публичная страница и превью). */
+  blocksRevealMode?: BlocksRevealMode;
   /**
    * Слои анимации между фоном и блоками (порядок = порядок наложения, последний выше).
    * Если undefined — используется миграция с `heartsSnow` / `heartsColor`.

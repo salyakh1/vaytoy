@@ -16,6 +16,9 @@ import {
 } from "@/lib/inviteBackgroundStyle";
 import { inviteFontClass } from "@/lib/inviteFontFamilies";
 import { mergeInviteWithDefaults } from "@/lib/inviteMerge";
+import { useBlocksRevealed } from "@/lib/useBlocksRevealed";
+import { BlocksRevealPlaceholder } from "@/components/BlocksRevealPlaceholder";
+import { inviteBlockRevealProps, normalizeBlocksRevealMode } from "@/lib/blocksRevealAnimation";
 
 function safeParseDoc(raw: string | null): InviteDoc | null {
   if (!raw) return null;
@@ -148,6 +151,7 @@ function musicVolStorageKey(slug: string) {
 
 export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }) {
   const [doc, setDoc] = useState<InviteDoc>(fallback);
+  const blocksRevealed = useBlocksRevealed(doc, true);
   const [playing, setPlaying] = useState(false);
   const [musicVolume, setMusicVolume] = useState(0.85);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -441,6 +445,10 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
           />
 
           <div className="relative z-10 min-w-0 space-y-3 p-3">
+            {!blocksRevealed ? (
+              <BlocksRevealPlaceholder />
+            ) : (
+              <>
             {doc.blocks
               .filter((b) => b.enabled)
               .map((b, blockIdx) => {
@@ -454,11 +462,15 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                 };
                 const secTitle = blockShowsSectionTitle(b, doc.global.showBlockTitles === true);
                 const sectionClass = ["min-w-0 max-w-full", blockCardBorderClass(b), "p-5"].join(" ");
+                const revealMode = normalizeBlocksRevealMode(doc.global.blocksRevealMode);
+                const reveal = inviteBlockRevealProps(revealMode, blockIdx);
+                const sectionClassReveal = [sectionClass, reveal.className].join(" ");
+                const blockStyle = { ...cardStyle, ...reveal.style };
 
                 if (b.kind === "nav") {
                   const enabled = doc.blocks.filter((x) => x.enabled).map((x) => x.kind);
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? <div className="text-sm font-semibold text-white/85">Меню</div> : null}
                       <div className={secTitle ? "mt-3 flex flex-wrap gap-2" : "flex flex-wrap gap-2"}>
                         {enabled
@@ -479,7 +491,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "calendar") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       <button
                         type="button"
                         onClick={downloadIcs}
@@ -496,7 +508,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                   const msLeft = target ? target - now : 0;
                   const t = formatCountdown(msLeft);
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? <div className="text-sm font-semibold text-white/85">Обратный отсчет</div> : null}
                       <div className={secTitle ? "mt-3 grid grid-cols-4 gap-2" : "grid grid-cols-4 gap-2"}>
                         {[
@@ -517,7 +529,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "palette") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? <div className="text-sm font-semibold text-white/85">Палитра</div> : null}
                       <div className={secTitle ? "mt-3 flex flex-wrap items-center gap-2" : "flex flex-wrap items-center gap-2"}>
                         {b.colors.map((c, idx) => (
@@ -530,7 +542,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "names") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       <div className="text-center text-[22px] font-semibold leading-tight">
                         {b.bride} & {b.groom}
                       </div>
@@ -541,7 +553,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "rsvp") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? <div className="text-sm font-semibold text-white/85">Подтверждение</div> : null}
                       {"question" in b && b.question ? (
                         <div className={secTitle ? "mt-2 text-sm text-white/70" : "mt-0 text-sm text-white/70"}>{b.question}</div>
@@ -570,7 +582,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "message") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? <div className="text-sm font-semibold text-white/85">Сообщение</div> : null}
                       {"prompt" in b && b.prompt ? (
                         <div className={secTitle ? "mt-2 text-sm text-white/70" : "text-sm text-white/70"}>{b.prompt}</div>
@@ -595,7 +607,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "text") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle && b.title ? (
                         <div className="text-center text-sm font-semibold tracking-wide text-white/90">{b.title}</div>
                       ) : secTitle ? (
@@ -615,7 +627,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "gifts") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? (
                         <div className="text-sm font-semibold text-white/85">{b.title ?? "Деньги в подарок"}</div>
                       ) : null}
@@ -626,7 +638,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "survey") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? <div className="text-sm font-semibold text-white/85">Опрос гостей</div> : null}
                       <div className={secTitle ? "mt-3 space-y-3" : "space-y-3"}>
                         {b.questions.map((q, qi) => (
@@ -669,7 +681,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "schedule") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? <div className="text-sm font-semibold text-white/85">Расписание</div> : null}
                       <div className={secTitle ? "mt-3 space-y-2" : "space-y-2"}>
                         {b.items.map((it, idx) => (
@@ -689,7 +701,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                 if (b.kind === "video") {
                   const wrapRadius = b.shape === "circle" ? "9999px" : `${Math.max(18, st.radiusPx)}px`;
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? <div className="text-sm font-semibold text-white/85">Видео</div> : null}
                       <div
                         className={
@@ -723,8 +735,8 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                   return (
                     <section
                       key={`${b.kind}-${blockIdx}`}
-                      className={sectionClass}
-                      style={cardStyle}
+                      className={sectionClassReveal}
+                      style={blockStyle}
                       id={sectionId(b.kind)}
                     >
                       {secTitle ? <div className="text-sm font-semibold text-white/85">История</div> : null}
@@ -761,8 +773,8 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                   return (
                     <section
                       key={`${b.kind}-${blockIdx}`}
-                      className={sectionClass}
-                      style={cardStyle}
+                      className={sectionClassReveal}
+                      style={blockStyle}
                       id={sectionId(b.kind)}
                     >
                       {secTitle ? (
@@ -789,8 +801,8 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
                   return (
                     <section
                       key={`${b.kind}-${blockIdx}`}
-                      className={sectionClass}
-                      style={cardStyle}
+                      className={sectionClassReveal}
+                      style={blockStyle}
                       id={sectionId(b.kind)}
                     >
                       {secTitle && !hasVenueHeader ? (
@@ -803,7 +815,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "wishes") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? (
                         <div className="text-sm font-semibold text-white/85">{b.title ?? "Пожелания"}</div>
                       ) : null}
@@ -816,7 +828,7 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
 
                 if (b.kind === "wishesForm") {
                   return (
-                    <section key={`${b.kind}-${blockIdx}`} className={sectionClass} style={cardStyle} id={sectionId(b.kind)}>
+                    <section key={`${b.kind}-${blockIdx}`} className={sectionClassReveal} style={blockStyle} id={sectionId(b.kind)}>
                       {secTitle ? (
                         <div className="text-sm font-semibold text-white/85">{b.title ?? "Оставьте пожелание"}</div>
                       ) : null}
@@ -849,6 +861,8 @@ export default function PublicInviteClient({ fallback }: { fallback: InviteDoc }
               })}
 
             <div className="h-4" />
+              </>
+            )}
           </div>
         </div>
       </div>

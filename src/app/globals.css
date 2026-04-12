@@ -132,3 +132,99 @@ body {
   }
 }
 
+/* Появление блоков приглашения (после задержки) — /i/… и превью редактора */
+@keyframes invite-reveal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes invite-reveal-slide-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes invite-reveal-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes invite-reveal-blur {
+  from {
+    opacity: 0;
+    filter: blur(12px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes invite-reveal-cascade {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.invite-public-root .invite-block-reveal,
+.invite-editor-device-preview .invite-block-reveal {
+  animation-duration: 0.75s;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-fill-mode: both;
+}
+
+.invite-public-root .invite-block-reveal--fade,
+.invite-editor-device-preview .invite-block-reveal--fade {
+  animation-name: invite-reveal-fade;
+}
+
+.invite-public-root .invite-block-reveal--slideUp,
+.invite-editor-device-preview .invite-block-reveal--slideUp {
+  animation-name: invite-reveal-slide-up;
+}
+
+.invite-public-root .invite-block-reveal--zoom,
+.invite-editor-device-preview .invite-block-reveal--zoom {
+  animation-name: invite-reveal-zoom;
+}
+
+.invite-public-root .invite-block-reveal--blur,
+.invite-editor-device-preview .invite-block-reveal--blur {
+  animation-name: invite-reveal-blur;
+}
+
+.invite-public-root .invite-block-reveal--cascade,
+.invite-editor-device-preview .invite-block-reveal--cascade {
+  animation-name: invite-reveal-cascade;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .invite-public-root .invite-block-reveal,
+  .invite-editor-device-preview .invite-block-reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+

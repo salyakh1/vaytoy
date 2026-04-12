@@ -1,5 +1,6 @@
 import type { InviteBlock, InviteDoc } from "./inviteTypes";
 import { createDemoInvite } from "./demoInvite";
+import { normalizeBlocksRevealMode } from "./blocksRevealAnimation";
 import { normalizeInviteFontFamily } from "./inviteFontFamilies";
 import { mergeOverlayAnimationsForDoc } from "./overlayAnimMerge";
 
@@ -12,6 +13,8 @@ export function mergeInviteWithDefaults(slug: string, doc: InviteDoc): InviteDoc
     ...doc.global,
     fontFamily: normalizeInviteFontFamily(doc.global.fontFamily),
     showBlockTitles: doc.global.showBlockTitles ?? demo.global.showBlockTitles ?? false,
+    blocksRevealDelaySec: doc.global.blocksRevealDelaySec ?? demo.global.blocksRevealDelaySec ?? 0,
+    blocksRevealMode: normalizeBlocksRevealMode(doc.global.blocksRevealMode ?? demo.global.blocksRevealMode),
     backgroundBrightness: doc.global.backgroundBrightness ?? demo.global.backgroundBrightness ?? 1,
     overlayAnimations: mergeOverlayAnimationsForDoc(doc),
   };

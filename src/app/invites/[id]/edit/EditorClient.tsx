@@ -22,6 +22,7 @@ import {
   hexOrFallbackForPicker,
 } from "@/lib/overlayAnimMerge";
 import { MapVenueBlock } from "@/components/MapVenueBlock";
+import { BLOCKS_REVEAL_OPTIONS, inviteBlockRevealProps, normalizeBlocksRevealMode } from "@/lib/blocksRevealAnimation";
 import { INVITE_FONT_OPTIONS, inviteFontClass } from "@/lib/inviteFontFamilies";
 import { blockCardBorderClass, blockShowsSectionTitle, mergeBlockStyle } from "@/lib/inviteTypes";
 import { buildWeddingIcs, defaultInviteListTitle, formatCountdown } from "@/lib/inviteUtils";
@@ -727,6 +728,9 @@ export default function EditorClient({
                         };
                         const secTitle = blockShowsSectionTitle(b, doc.global.showBlockTitles === true);
                         const sectionBase = ["min-w-0 max-w-full", blockCardBorderClass(b), "p-5"].join(" ");
+                        const revealMode = normalizeBlocksRevealMode(doc.global.blocksRevealMode);
+                        const reveal = inviteBlockRevealProps(revealMode, blockIdx);
+                        const blockStyle = { ...cardStyle, ...reveal.style };
 
                         if (b.kind === "nav") {
                           return (
@@ -735,8 +739,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("nav")}
                               id={sectionId("nav")}
                             >
@@ -766,8 +771,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("calendar")}
                               id={sectionId("calendar")}
                             >
@@ -795,8 +801,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("countdown")}
                               id={sectionId("countdown")}
                             >
@@ -830,8 +837,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("palette")}
                               id={sectionId("palette")}
                             >
@@ -856,8 +864,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("names")}
                               id={sectionId("names")}
                             >
@@ -876,8 +885,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("rsvp")}
                               id={sectionId("rsvp")}
                             >
@@ -914,8 +924,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("message")}
                               id={sectionId("message")}
                             >
@@ -945,8 +956,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("text")}
                               id={sectionId("text")}
                             >
@@ -975,8 +987,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("gifts")}
                               id={sectionId("gifts")}
                             >
@@ -997,8 +1010,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("survey")}
                               id={sectionId("survey")}
                             >
@@ -1017,8 +1031,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("schedule")}
                               id={sectionId("schedule")}
                             >
@@ -1044,8 +1059,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("video")}
                               id={sectionId("video")}
                             >
@@ -1085,8 +1101,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("story")}
                               id={sectionId("story")}
                             >
@@ -1127,8 +1144,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("slides")}
                               id={sectionId("slides")}
                             >
@@ -1158,8 +1176,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("wishes")}
                               id={sectionId("wishes")}
                             >
@@ -1194,8 +1213,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("wishesForm")}
                               id={sectionId("wishesForm")}
                             >
@@ -1231,8 +1251,9 @@ export default function EditorClient({
                               className={[
                                 sectionBase,
                                 selected === b.kind ? "ring-1 ring-[rgba(168,85,247,0.45)]" : "",
+                                reveal.className,
                               ].join(" ")}
-                              style={cardStyle}
+                              style={blockStyle}
                               onClick={() => setSelected("map")}
                               id={sectionId("map")}
                             >
@@ -1309,6 +1330,52 @@ export default function EditorClient({
                   value={doc.global.fontSizePx}
                   onChange={(v) => setDoc((p) => ({ ...p, global: { ...p.global, fontSizePx: v } }))}
                 />
+              </label>
+
+              <label className="grid gap-1">
+                <div className="flex items-center justify-between text-[11px] font-medium text-white/55">
+                  <span>Задержка появления блоков</span>
+                  <span className="text-white/35">{doc.global.blocksRevealDelaySec ?? 0} с</span>
+                </div>
+                <Slider
+                  min={0}
+                  max={120}
+                  step={1}
+                  value={doc.global.blocksRevealDelaySec ?? 0}
+                  onChange={(v) =>
+                    setDoc((p) => ({ ...p, global: { ...p.global, blocksRevealDelaySec: v } }))
+                  }
+                />
+                <p className="text-[10px] leading-snug text-white/35">
+                  На странице гостя блоки показываются через указанное время после открытия (фон и рамка видны сразу).
+                  В превью слева блоки всегда видны сразу.
+                </p>
+              </label>
+
+              <label className="grid gap-1">
+                <div className="text-[11px] font-medium text-white/55">Вид появления блоков</div>
+                <select
+                  className="h-10 rounded-2xl border border-white/10 bg-black/25 px-3 text-[13px] text-white/85 outline-none focus:border-white/20"
+                  value={normalizeBlocksRevealMode(doc.global.blocksRevealMode)}
+                  onChange={(e) =>
+                    setDoc((p) => ({
+                      ...p,
+                      global: {
+                        ...p.global,
+                        blocksRevealMode: e.target.value as InviteDoc["global"]["blocksRevealMode"],
+                      },
+                    }))
+                  }
+                >
+                  {BLOCKS_REVEAL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] leading-snug text-white/35">
+                  Анимация срабатывает после задержки выше (и на публичной странице, и в превью).
+                </p>
               </label>
 
               <label className="grid gap-1">

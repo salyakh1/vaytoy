@@ -15,6 +15,8 @@ export function createDemoInvite(slug: string): InviteDoc {
       backgroundBrightness: 1,
       overlayOpacity: 0.55,
       showBlockTitles: false,
+      blocksRevealDelaySec: 0,
+      blocksRevealMode: "fade",
       overlayAnimations: [
         { id: "demo-hearts", kind: "hearts", enabled: true, color: DEFAULT_HEARTS_COLOR },
         { id: "demo-letters", kind: "letters", enabled: false, text: "LOVE", color: "rgba(255,255,255,0.88)" },
